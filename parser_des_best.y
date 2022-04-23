@@ -34,6 +34,13 @@ typedef struct stmt	// command
 	struct stmt *left, *right;
 } stmt;
 
+typedef struct lprocess	// list of processes
+{
+	struct stmt *left;
+    struct lprocess *right; 
+} lprocess;
+
+lprocess *process;
 var *program_vars;
 stmt *program_stmts;
 
@@ -91,7 +98,7 @@ stmt* make_stmt (int type, var *var, expr *expr,
 %type <s> stmt assign
 
 %token DO OD IF FI ASSIGN OR AND XOR NOT TRUE FALSE PROC VAR ELSE SKIP END REACH BREAK INT GT EQ PLUS MINUS TIMES
-%token <i> IDENT
+%token <c> IDENT
 
 %left ';'
 
