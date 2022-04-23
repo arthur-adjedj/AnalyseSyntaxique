@@ -18,10 +18,12 @@ DIG	[0-9]
 
 {DIG}+     { yylval.i = atoi(yytext); return INT; }
 
-">"    { return  GT}
-"=="    { return EQ; }
-":="    { return ASSIGN; }
-"^"        { return XOR; }
+"::"   { return CASE ; }
+"->"    { return THEN ; }
+">"    { return  GT ; }
+"=="    { return EQ ; }
+":="    { return ASSIGN ; }
+"^"     { return XOR ; }
 "||"    { return OR; }
 "&&"    { return AND; }
 "!"    { return NOT; }
@@ -32,6 +34,7 @@ DIG	[0-9]
 [a-z][a-z0-9]* { yylval.c = strdup(yytext); return IDENT; }
 
 [ \n]   {  }
+
 
 .	{ printf("nique ta mère") ; }
 
