@@ -12,6 +12,13 @@ void yyerror(char *s)
 	fprintf(stderr, "%s\n", s);
 }
 
+typedef struct var	// a variable
+{
+	char *name;
+	int value;
+	struct var *next;
+} var;
+
 typedef struct expr	// boolean expression
 {
 	int type;	// INT, OR, XOR, AND, NOT, GT, EQ, PLUS, MINUS, TIMES, 0 (variable)
@@ -20,18 +27,15 @@ typedef struct expr	// boolean expression
 	struct expr *left, *right;
 } expr;
 
-typedef struct var	// a variable
-{
-	char *name;
-	int value;
-	struct var *next;
-} var;
 
-typedef struct decl	// a variable
+typedef struct stmt	// command
 {
+	int type;	// ASSIGN, ';', DO, IF, SKIP, CASES
 	var *var;
-    struct decl *next;
-} decl;
+	expr *expr;
+    struct mcase *cases; 
+	struct stmt *left, *right;
+} stmt;
 
 typedef struct mcase // a case match
 {
@@ -41,15 +45,15 @@ typedef struct mcase // a case match
     struct mcase *next;
 } mcase; 
 
-
-typedef struct stmt	// command
+typedef struct decl	// a variable
 {
-	int type;	// ASSIGN, ';', DO, IF, SKIP, CASES
 	var *var;
-	expr *expr;
-    mcase *cases; 
-	struct stmt *left, *right;
-} stmt;
+    struct decl *next;
+} decl;
+
+
+
+
 
 typedef struct specification // list of specifications
 {
@@ -86,7 +90,7 @@ var* make_ident (char *s)
 
 var* find_ident (char *s)
 {
-	var *v = program_vars;
+	var *v = decl_list->var;
 	while (v && strcmp(v->name,s)) v = v->next;
 	if (!v) { yyerror("undeclared variable"); exit(1); }
 	return v;
@@ -114,7 +118,7 @@ mcase* make_mcase (int type, expr *expr, stmt *stmt)
 }
 
 stmt* make_stmt (int type, mcase *mcase, var *var, expr *expr,
-			stmt *left, stmt *right, varlist *list)
+			stmt *left, stmt *right)
 {
 	stmt *s = malloc(sizeof(stmt));
 	s->type = type;
@@ -159,7 +163,7 @@ lprocess* make_proc (stmt *stmt)
 %type <sp> specifications
 %type <p> procs
 %type <d> declists 
-%type <v> declarations,declist
+%type <v> declarations declist
 %type <e> expr
 %type <s> stmt assign
 %type <mc> cases
@@ -195,19 +199,19 @@ declarations : IDENT { $$ = make_ident($1); }
 
 stmt	: assign
 	| stmt ';' stmt	
-		{ $$ = make_stmt(';',NULL,NULL,NULL,$1,$3,NULL); }
+		{ $$ = make_stmt(';',NULL,NULL,NULL,$1,$3); }
 	| DO cases OD
-		{ $$ = make_stmt(DO,$2,NULL,NULL,NULL,NULL,NULL); }
-    | IF cases FI {$$ = make_stmt(IF,$2,NULL,NULL,NULL,NULL,NULL); } 
-    | SKIP { $$ = make_stmt(SKIP,NULL,NULL,NULL,NULL,NULL,NULL,NULL); }
-    | BREAK { $$ = make_stmt(BREAK,NULL,NULL,NULL,NULL,NULL,NULL,NULL);}
+		{ $$ = make_stmt(DO,$2,NULL,NULL,NULL,NULL); }
+    | IF cases FI {$$ = make_stmt(IF,$2,NULL,NULL,NULL,NULL); } 
+    | SKIP { $$ = make_stmt(SKIP,NULL,NULL,NULL,NULL,NULL); }
+    | BREAK { $$ = make_stmt(BREAK,NULL,NULL,NULL,NULL,NULL);}
 
 cases : CASE expr THEN stmt {$$ = make_mcase(0,$2,$4); }
     | CASE ELSE THEN stmt {$$ = make_mcase(ELSE,NULL,$4); }
     | CASE expr THEN stmt cases {($$ = make_mcase(0,$2,$4))->next = $5; }        
 
 assign	: IDENT ASSIGN expr
-		{ $$ = make_stmt(ASSIGN,NULL,find_ident($1),$3,NULL,NULL,NULL); }
+		{ $$ = make_stmt(ASSIGN,NULL,find_ident($1),$3,NULL,NULL); }
 
 expr	: IDENT		{ $$ = make_expr(0,0,find_ident($1),NULL,NULL); }
 	| expr XOR expr	{ $$ = make_expr(XOR,0,NULL,$1,$3); }
