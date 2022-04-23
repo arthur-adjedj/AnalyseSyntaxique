@@ -103,6 +103,35 @@ stmt* make_stmt (int type, var *var, expr *expr,
 
 %%
 
+prog	: bools stmt	{ program_stmts = $2; }
+
+bools	: BOOL declist ';'	{ program_vars = $2; }
+
+declist	: IDENT			{ $$ = make_ident($1); }
+	| declist ',' IDENT	{ ($$ = make_ident($3))->next = $1; }
+
+stmt	: assign
+	| stmt ';' stmt	
+		{ $$ = make_stmt(';',NULL,NULL,$1,$3,NULL); }
+	| WHILE expr DO stmt OD
+		{ $$ = make_stmt(WHILE,NULL,$2,$4,NULL,NULL); }
+	| PRINT varlist
+		{ $$ = make_stmt(PRINT,NULL,NULL,NULL,NULL,$2); }
+
+assign	: IDENT ASSIGN expr
+		{ $$ = make_stmt(ASSIGN,find_ident($1),$3,NULL,NULL,NULL); }
+
+varlist	: IDENT			{ $$ = make_varlist($1); }
+	| varlist ',' IDENT	{ ($$ = make_varlist($3))->next = $1; }
+
+expr	: IDENT		{ $$ = make_expr(0,find_ident($1),NULL,NULL); }
+	| expr XOR expr	{ $$ = make_expr(XOR,NULL,$1,$3); }
+	| expr OR expr	{ $$ = make_expr(OR,NULL,$1,$3); }
+	| expr AND expr	{ $$ = make_expr(AND,NULL,$1,$3); }
+	| NOT expr	{ $$ = make_expr(NOT,NULL,$2,NULL); }
+	| TRUE		{ $$ = make_expr(TRUE,NULL,NULL,NULL); }
+	| FALSE		{ $$ = make_expr(FALSE,NULL,NULL,NULL); }
+	| '(' expr ')'	{ $$ = $2; }
 
 
 
