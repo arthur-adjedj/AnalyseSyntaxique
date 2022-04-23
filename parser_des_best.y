@@ -177,7 +177,7 @@ lprocess* make_proc (stmt *stmt)
 
 %%
 
-prog	: declists procs specifications	{decl_list = $1; process_list = $2; specification_list = $3}
+prog	: declists procs specifications	{decl_list = $1; process_list = $2; specification_list = $3;}
 
 declists : {$$ = NULL; }
     | declist ';' declists {($$ = make_decl_list($1))->next = $3; }
@@ -188,7 +188,7 @@ procs : {$$ = NULL; }
 specifications : {$$ = NULL; }
     | REACH expr specifications {($$ = make_sp($2))->next = $3; }
 
-declist	: VAR declarations {$$ = $2}
+declist	: VAR declarations {$$ = $2;}
 
 declarations : IDENT { $$ = make_ident($1); }
     | declarations ',' IDENT { ($$ = make_ident($3))->next = $1; } 
@@ -220,11 +220,9 @@ expr	: IDENT		{ $$ = make_expr(0,0,find_ident($1),NULL,NULL); }
     | expr GT expr	{ $$ = make_expr(GT,0,NULL,$1,$3); }
 	| NOT expr	{ $$ = make_expr(NOT,0,NULL,$2,NULL); }
 	| '(' expr ')'	{ $$ = $2; }
-    | INT {make_expr(INT,$1,NULL,NULL,NULL)}
+    | INT 
 
 
 
-
-%%
 
 %%
