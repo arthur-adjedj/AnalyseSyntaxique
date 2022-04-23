@@ -198,7 +198,7 @@ declarations : IDENT { $$ = make_ident($1); }
     | declarations ',' IDENT { ($$ = make_ident($3))->next = $1; } 
 
 stmt	: assign
-	| stmt ';' stmt	
+	| stmt ';' stmt
 		{ $$ = make_stmt(';',NULL,NULL,NULL,$1,$3); }
 	| DO cases OD
 		{ $$ = make_stmt(DO,$2,NULL,NULL,NULL,NULL); }
@@ -210,7 +210,7 @@ cases : CASE expr THEN stmt {$$ = make_mcase(0,$2,$4); }
     | CASE ELSE THEN stmt {$$ = make_mcase(ELSE,NULL,$4); }
     | CASE expr THEN stmt cases {($$ = make_mcase(0,$2,$4))->next = $5; }        
 
-assign	: IDENT ASSIGN expr
+assign	: IDENT ASSIGN expr 
 		{ $$ = make_stmt(ASSIGN,NULL,find_ident($1),$3,NULL,NULL); }
 
 expr	: IDENT		{ $$ = make_expr(0,0,find_ident($1),NULL,NULL); }

@@ -1,0 +1,4 @@
+var x;
+proc p
+    a := x
+end

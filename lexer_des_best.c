@@ -354,8 +354,8 @@ static void yynoreturn yy_fatal_error ( const char* msg  );
 	(yy_hold_char) = *yy_cp; \
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
-#define YY_NUM_RULES 28
-#define YY_END_OF_BUFFER 29
+#define YY_NUM_RULES 29
+#define YY_END_OF_BUFFER 30
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -365,9 +365,9 @@ struct yy_trans_info
 	};
 static const flex_int16_t yy_accept[63] =
     {   0,
-        0,    0,   29,   27,   26,   26,   21,   27,   24,   22,
-       23,   12,   27,   27,   15,   18,   25,   25,   25,   25,
-       25,   25,   25,   25,   25,   25,   25,   27,   20,   14,
+       27,   27,   30,   28,   26,   26,   21,   28,   24,   22,
+       23,   12,   28,   28,   15,   18,   25,   25,   25,   25,
+       25,   25,   25,   25,   25,   25,   25,   28,   20,   14,
        12,   13,   17,   16,   25,   25,    3,   25,   25,    6,
         5,    4,   25,   25,   25,   25,   19,   25,   25,    9,
        25,   25,   25,    1,   25,    7,    2,   25,    8,   11,
@@ -698,7 +698,7 @@ YY_DECL
 		}
 
 	{
-#line 5 "lexer_des_best.l"
+#line 4 "lexer_des_best.l"
 
 
 #line 705 "<stdout>"
@@ -760,146 +760,151 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 7 "lexer_des_best.l"
-{ return VAR; }
+#line 6 "lexer_des_best.l"
+{ printf("var"); return VAR; }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 8 "lexer_des_best.l"
+#line 7 "lexer_des_best.l"
 { return PROC; }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 9 "lexer_des_best.l"
+#line 8 "lexer_des_best.l"
 { return DO; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 10 "lexer_des_best.l"
+#line 9 "lexer_des_best.l"
 { return OD; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 11 "lexer_des_best.l"
+#line 10 "lexer_des_best.l"
 { return IF; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 12 "lexer_des_best.l"
+#line 11 "lexer_des_best.l"
 { return FI; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 13 "lexer_des_best.l"
+#line 12 "lexer_des_best.l"
 { return ELSE; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 14 "lexer_des_best.l"
+#line 13 "lexer_des_best.l"
 { return SKIP; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 15 "lexer_des_best.l"
+#line 14 "lexer_des_best.l"
 { return END; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 16 "lexer_des_best.l"
+#line 15 "lexer_des_best.l"
 { return REACH; }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 17 "lexer_des_best.l"
+#line 16 "lexer_des_best.l"
 { return BREAK; }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 19 "lexer_des_best.l"
+#line 18 "lexer_des_best.l"
 { yylval.e = make_expr(INT,atoi(yytext),NULL,NULL,NULL); return INT; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 21 "lexer_des_best.l"
+#line 20 "lexer_des_best.l"
 { return CASE ; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 22 "lexer_des_best.l"
+#line 21 "lexer_des_best.l"
 { return THEN ; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 23 "lexer_des_best.l"
+#line 22 "lexer_des_best.l"
 { return  GT ; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 24 "lexer_des_best.l"
+#line 23 "lexer_des_best.l"
 { return EQ ; }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 25 "lexer_des_best.l"
+#line 24 "lexer_des_best.l"
 { return ASSIGN ; }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 26 "lexer_des_best.l"
+#line 25 "lexer_des_best.l"
 { return XOR ; }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 27 "lexer_des_best.l"
+#line 26 "lexer_des_best.l"
 { return OR; }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 28 "lexer_des_best.l"
+#line 27 "lexer_des_best.l"
 { return AND; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 29 "lexer_des_best.l"
+#line 28 "lexer_des_best.l"
 { return NOT; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 30 "lexer_des_best.l"
+#line 29 "lexer_des_best.l"
 { return PLUS ; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 31 "lexer_des_best.l"
+#line 30 "lexer_des_best.l"
 { return MINUS ; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 32 "lexer_des_best.l"
+#line 31 "lexer_des_best.l"
 { return TIMES ; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 34 "lexer_des_best.l"
+#line 33 "lexer_des_best.l"
 { yylval.c = strdup(yytext); return IDENT; }
 	YY_BREAK
 case 26:
 /* rule 26 can match eol */
 YY_RULE_SETUP
-#line 36 "lexer_des_best.l"
-{  }
+#line 35 "lexer_des_best.l"
+{ printf("à la ligne") ; }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 39 "lexer_des_best.l"
-{ printf("nique ta mère") ; }
+#line 36 "lexer_des_best.l"
+{ printf("rien \n") ;}
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 41 "lexer_des_best.l"
+#line 38 "lexer_des_best.l"
+{ printf("nique ta mère") ; }
+	YY_BREAK
+case 29:
+YY_RULE_SETUP
+#line 40 "lexer_des_best.l"
 ECHO;
 	YY_BREAK
-#line 903 "<stdout>"
+#line 908 "<stdout>"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1904,6 +1909,6 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 41 "lexer_des_best.l"
+#line 40 "lexer_des_best.l"
 
 

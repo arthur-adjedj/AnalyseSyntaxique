@@ -1,10 +1,9 @@
 %option noyywrap
 
 DIG	[0-9]
-
 %%
 
-"var"    { return VAR; }
+"var"    { printf("var"); return VAR; }
 "proc"    { return PROC; }
 "do"    { return DO; }
 "od"    { return OD; }
@@ -33,8 +32,8 @@ DIG	[0-9]
 
 [a-z][a-z0-9]* { yylval.c = strdup(yytext); return IDENT; }
 
-[ \n]   {  }
-
+[ \n]   { printf("à la ligne") ; }
+"" { printf("rien \n") ;}
 
 .	{ printf("nique ta mère") ; }
 
