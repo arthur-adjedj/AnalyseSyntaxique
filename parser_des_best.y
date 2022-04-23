@@ -230,3 +230,11 @@ expr	: IDENT		{ $$ = make_expr(0,0,find_ident($1),NULL,NULL); }
 
 
 %%
+
+#include "lexer_des_best.c"
+
+int main (int argc, char **argv)
+{
+	if (argc > 1) yyin = fopen(argv[1],"r");
+	yyparse();
+}
