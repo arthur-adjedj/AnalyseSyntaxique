@@ -16,7 +16,7 @@ DIG	[0-9]
 "reach"    { return REACH; }
 "break"    { return BREAK; }
 
-{DIG}+     { yylval.i = atoi(yytext); return INT; }
+{DIG}+     { yylval.e = make_expr(INT,atoi(yytext),NULL,NULL,NULL); return INT; }
 
 "::"   { return CASE ; }
 "->"    { return THEN ; }
