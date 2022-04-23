@@ -18,8 +18,6 @@ DIG	[0-9]
 
 {DIG}+     { yylval.i = atoi(yytext); return INT; }
 
-","     { return COMMA ; }
-";"     { return SEMC ; }
 ">"    { return  GT}
 "=="    { return EQ; }
 ":="    { return ASSIGN; }
