@@ -17,7 +17,6 @@ DIG	[0-9]
 
 {DIG}+     { yylval.e = make_expr(INT,atoi(yytext),NULL,NULL,NULL); return INT; }
 
-
 ";"    { return SEMC ;}
 ","    { return COMMA ; }
 "::"   { return CASE ; }
@@ -34,8 +33,8 @@ DIG	[0-9]
 "*"    { return TIMES ; }
 
 [a-z][a-z0-9]* { yylval.c = strdup(yytext); return IDENT; }
-"//"[a-z0-9A-Z]*"\n" {  }
-[	 \n]    { /* ignore */ }
+"//"[a-z0-9A-Z ]*"\n" {  }
+[	 \n]    { }
 
 .	{ }
 
