@@ -1,44 +1,16 @@
-//b Protocôle
-//accessible
-
-//aaa
-//f0
-//fref az
-
-var f0,f1,v,c,ga; //a
+var x,y,z;
+var fin;
 
 proc p
-    do
-    :: 1 -> //c
+        var tmp;
 
-	f0 := 1; v := 0;
-	do
-	:: v == 1 || !f0  -> break
-	od;
+    
 
-	c := c+1;
-	c := c-1;
 
-	f0 := 0
-    od
+        fin := 1
 end
 
-proc p1
-    do
-    :: 1 ->   
-
-	f1 := 1; v := 1;
-	do
-	:: v == 0 || !f1  -> break
-	od;
-
-	c := c+2;
-	c := c-2;
-
-	f1 := 0
-    od
-end
-
-reach	c == 1	
-reach	c == 2	
-reach	c == 3	
+reach fin		
+reach fin && x > y     
+reach fin && y > z      
+reach fin && x > z      

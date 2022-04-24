@@ -218,7 +218,7 @@ cases : CASE expr THEN stmt {$$ = make_mcase(0,$2,$4); }
 assign	: IDENT ASSIGN expr 
 		{ $$ = make_stmt(ASSIGN,NULL,NULL,$3,NULL,NULL); }
 
-expr	: IDENT			{ $$ = make_expr(Ident,0,find_ident($1),NULL,NULL); }
+expr	: IDENT			{ $$ = make_expr(Ident,0,NULL,NULL,NULL); }
 	| expr XOR expr		{ $$ = make_expr(Xor,0,NULL,$1,$3); }
 	| expr OR expr		{ $$ = make_expr(Or,0,NULL,$1,$3); }
 	| expr AND expr		{ $$ = make_expr(And,0,NULL,$1,$3); }
