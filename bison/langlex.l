@@ -1,11 +1,9 @@
 %option noyywrap
 
-DIG	[0-9]
-
 %%
 
-"bool"	{ return BOOL; }
-"while"	{ return WHILE; }
+"bool"	{ printf("bool"); return BOOL; }
+"while"	{ printf("while"); return WHILE; }
 "do"	{ return DO; }
 "od"	{ return OD; }
 "print"	{ return PRINT; }

@@ -3,7 +3,7 @@
 DIG	[0-9]
 %%
 
-"var"    { printf("var"); return VAR; }
+"var"    { return VAR; }
 "proc"    { return PROC; }
 "do"    { return DO; }
 "od"    { return OD; }
@@ -17,6 +17,9 @@ DIG	[0-9]
 
 {DIG}+     { yylval.e = make_expr(INT,atoi(yytext),NULL,NULL,NULL); return INT; }
 
+
+";"    { return SEMC ;}
+","    { return COMMA ; }
 "::"   { return CASE ; }
 "->"    { return THEN ; }
 ">"    { return  GT ; }
@@ -31,10 +34,9 @@ DIG	[0-9]
 "*"    { return TIMES ; }
 
 [a-z][a-z0-9]* { yylval.c = strdup(yytext); return IDENT; }
+"//"[a-z0-9A-Z]*"\n" {  }
+[	 \n]    { /* ignore */ }
 
-[ \n]   { printf("à la ligne") ; }
-"" { printf("rien \n") ;}
-
-.	{ printf("nique ta mère") ; }
+.	{ }
 
 %%

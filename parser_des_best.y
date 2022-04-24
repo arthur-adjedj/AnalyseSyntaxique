@@ -9,7 +9,7 @@ int yylex();
 void yyerror(char *s)
 {
 	fflush(stdout);
-	fprintf(stderr, "%s\n", s);
+	fprintf(stderr, "%s\n" , s);
 }
 
 typedef struct var	// a variable
@@ -168,7 +168,7 @@ lprocess* make_proc (stmt *stmt)
 %type <s> stmt assign
 %type <mc> cases
 
-%token DO OD IF FI ASSIGN OR AND XOR NOT PROC VAR ELSE SKIP END REACH BREAK INT GT EQ PLUS MINUS TIMES CASE THEN
+%token DO OD IF FI ASSIGN OR AND XOR NOT PROC VAR ELSE SKIP END REACH BREAK INT GT EQ PLUS MINUS TIMES CASE THEN SEMC COMMA
 %token <c> IDENT
 
 %left ';'
@@ -177,29 +177,29 @@ lprocess* make_proc (stmt *stmt)
 %left AND
 %right NOT
 
-
+%start prog 
 
 %%
 
-prog	: declists procs specifications	{decl_list = $1; process_list = $2; specification_list = $3;}
+prog : declists procs specifications	{decl_list = $1; process_list = $2; specification_list = $3;}
 
 declists : {$$ = NULL; }
-    | declist ';' declists {($$ = make_decl_list($1))->next = $3; }
+    | declist declists {($$ = make_decl_list($1))->next = $2; }
 
 procs : {$$ = NULL; }
-    | PROC stmt END procs {($$ = make_proc($2))->next = $4; }
+    | PROC IDENT stmt END procs {($$ = make_proc($3))->next = $5; }
 
 specifications : {$$ = NULL; }
     | REACH expr specifications {($$ = make_sp($2))->next = $3; }
 
-declist	: VAR declarations {$$ = $2;}
+declist	: VAR declarations SEMC {$$ = $2;}
 
 declarations : IDENT { $$ = make_ident($1); }
-    | declarations ',' IDENT { ($$ = make_ident($3))->next = $1; } 
+    | declarations COMMA IDENT { ($$ = make_ident($3))->next = $1; } 
 
 stmt	: assign
-	| stmt ';' stmt
-		{ $$ = make_stmt(';',NULL,NULL,NULL,$1,$3); }
+	| stmt SEMC stmt
+		{ $$ = make_stmt(SEMC,NULL,NULL,NULL,$1,$3); }
 	| DO cases OD
 		{ $$ = make_stmt(DO,$2,NULL,NULL,NULL,NULL); }
     | IF cases FI {$$ = make_stmt(IF,$2,NULL,NULL,NULL,NULL); } 
@@ -211,9 +211,9 @@ cases : CASE expr THEN stmt {$$ = make_mcase(0,$2,$4); }
     | CASE expr THEN stmt cases {($$ = make_mcase(0,$2,$4))->next = $5; }        
 
 assign	: IDENT ASSIGN expr 
-		{ $$ = make_stmt(ASSIGN,NULL,find_ident($1),$3,NULL,NULL); }
+		{ $$ = make_stmt(ASSIGN,NULL,NULL,$3,NULL,NULL); }
 
-expr	: IDENT		{ $$ = make_expr(0,0,find_ident($1),NULL,NULL); }
+expr	: IDENT		{ $$ = make_expr(0,0,NULL,NULL,NULL); }
 	| expr XOR expr	{ $$ = make_expr(XOR,0,NULL,$1,$3); }
 	| expr OR expr	{ $$ = make_expr(OR,0,NULL,$1,$3); }
 	| expr AND expr	{ $$ = make_expr(AND,0,NULL,$1,$3); }
