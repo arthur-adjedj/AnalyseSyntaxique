@@ -33,11 +33,10 @@ DIG	[0-9]
 "*"    { printf("TIMES  "); }
 
 [a-z][a-z0-9]* {printf("IDENT "); }
-"//"[a-z0-9A-Z]*"\n" { printf("commentaire ") ; }
+"//"[a-z0-9A-Z ]*"\n" { }
+[	 \n]    { }
 
-[	 \n]    { printf("ah");}
-
-.	{ printf("point") ; }
+.	{ printf("erreur"); }
 
 %%
 
