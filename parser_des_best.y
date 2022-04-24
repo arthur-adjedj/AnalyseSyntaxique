@@ -91,10 +91,16 @@ decl* make_decl_list (var *v)
     return d;
 }
 
+int print_decl(decl *decl);
+
 int link_decl_lists(decl *d1, decl *d2){
-	if(d1->next = NULL){
-		d1->next = d2;
-	} else link_decl_lists(d1->next,d2);
+	if(d1 != NULL){
+		if(d1->next == NULL){
+			d1->next = d2;
+		} else {
+			link_decl_lists(d1->next,d2);
+		}
+	}
 
 }
 
@@ -153,6 +159,7 @@ stmt* make_stmt (enum type_stmt type, mcase *mcase, var *var, expr *expr,
 	s->type = type;
 	switch(type){
 		case Assign:
+			printf("making an assign : %p, %s, %p\n",var,var->name,expr);
 			s->val.assign.var = var;
 			s->val.assign.expr = expr;
 		break;
@@ -227,13 +234,16 @@ lprocess* make_proc (char *name,stmt *stmt)
 
 prog : declists procs specifications	{decl_list = $1; process_list = $2; specification_list = $3;}
 
-declists : {printf("ahah\n"); $$ = NULL; }
-    | declist declists {printf("youpi \n"); link_decl_lists($$ = $1,$2); }
+declists : {$$ = NULL; }
+    | declist declists {
+		link_decl_lists($1,$2); 
+		$$ = $1;
+		}
 
-declist	: VAR declarations SEMC {printf("var\n"); $$ = $2;}
+declist	: VAR declarations SEMC { $$ = $2;}
 
 procs : {$$ = NULL; }
-    | PROC IDENT stmt END procs {printf("hihihi\n"); ($$ = make_proc($2,$3))->next = $5; }
+    | PROC IDENT stmt END procs {($$ = make_proc($2,$3))->next = $5; }
 
 specifications : {$$ = NULL; }
     | REACH expr specifications {($$ = make_sp($2))->next = $3; }
@@ -248,15 +258,15 @@ stmt	: assign
     | SKIP { $$ = make_stmt(Skip,NULL,NULL,NULL,NULL,NULL,NULL); }
     | BREAK { $$ = make_stmt(Break,NULL,NULL,NULL,NULL,NULL,NULL);}
 
-declarations : IDENT { $$ = make_decl_list(make_ident($1)); }
-    | declarations COMMA IDENT { ($$ = make_decl_list((make_ident($3))))->next = $1; } 
+declarations : IDENT { printf("%s \n",yylval.c); $$ = make_decl_list(make_ident($1)); }
+    | declarations COMMA IDENT {printf("%s \n",yylval.c); ($$ = make_decl_list((make_ident($3))))->next = $1; } 
 
 cases : CASE expr THEN stmt {$$ = make_mcase(0,$2,$4); }
     | CASE ELSE THEN stmt {$$ = make_mcase(ELSE,NULL,$4); }
     | CASE expr THEN stmt cases {($$ = make_mcase(0,$2,$4))->next = $5; }        
 
 assign	: IDENT ASSIGN expr 
-		{ $$ = make_stmt(Assign,NULL,NULL,$3,NULL,NULL,NULL); }
+		{printf("%s \n",yylval.c); $$ = make_stmt(Assign,NULL,make_ident(yylval.c),$3,NULL,NULL,NULL); }
 
 expr	: IDENT			{ printf("expr_ident"); $$ = make_expr(Ident,0,NULL,NULL,NULL); }
 	| expr XOR expr		{ $$ = make_expr(Xor,0,NULL,$1,$3); }
@@ -282,7 +292,7 @@ expr	: IDENT			{ printf("expr_ident"); $$ = make_expr(Ident,0,NULL,NULL,NULL); }
 int print_var(var *var) {
 	if(var != NULL){
 		printf("%s",var->name);
-	}
+	} else printf(" nil ");
 	return 0;
 }
 
@@ -414,7 +424,7 @@ int print_decl(decl *decl) {
 	if(decl != NULL){
 		printf("var %s \n",decl->var->name);
 		print_decl(decl->next);
-	}
+	};
 	return 0;
 }
 
@@ -431,7 +441,7 @@ int print_lprocess(lprocess *proc) {
 	if(proc != NULL){
 		printf("proc %s \n",proc->name);
 		print_stmt(proc->command);
-		printf("end \n");
+		printf("\nend \n");
 		print_lprocess(proc->next);
 	};
 	return 0;
@@ -439,11 +449,12 @@ int print_lprocess(lprocess *proc) {
 
 int main (int argc, char **argv)
 {
-	if (argc > 1) yyin = fopen(/*argv[1]*/ "./test2","r");
+	yyin = fopen(/*argv[1]*/ "./test2","r");
 	yyparse();
-	printf("parsing done, now printing");
-	printf("%p",decl_list);
+	printf("parsing done, now printing \n");
 	print_decl(decl_list);
+	printf("\n");
 	print_lprocess(process_list);
+	printf("\n");
 	print_specification(specification_list);
 }
