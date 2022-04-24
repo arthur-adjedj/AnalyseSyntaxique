@@ -4,12 +4,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+enum type_expr{Ident, Int, Or, Xor, And, Not, Gt, Eq, Plus, Minus, Times, Zero};
+enum type_stmt{Assign, Semic, Do, If, Skip, Cases} ;
+enum type_mcase{Else, Expr};
+
 int yylex();
 
 void yyerror(char *s)
 {
 	fflush(stdout);
-	fprintf(stderr, "%s\n" , s);
+	fprintf(stderr, "%s\n", s);
 }
 
 typedef struct var	// a variable
@@ -21,7 +26,7 @@ typedef struct var	// a variable
 
 typedef struct expr	// boolean expression
 {
-	int type;	// INT, OR, XOR, AND, NOT, GT, EQ, PLUS, MINUS, TIMES, 0 (variable)
+	enum type_expr type;	// INT, OR, XOR, AND, NOT, GT, EQ, PLUS, MINUS, TIMES, 0 (variable)
     int i;
 	var *var;
 	struct expr *left, *right;
@@ -30,7 +35,7 @@ typedef struct expr	// boolean expression
 
 typedef struct stmt	// command
 {
-	int type;	// ASSIGN, ';', DO, IF, SKIP, CASES
+	enum type_stmt type;	// ASSIGN, ';', DO, IF, SKIP, CASES
 	var *var;
 	expr *expr;
     struct mcase *cases; 
@@ -39,7 +44,7 @@ typedef struct stmt	// command
 
 typedef struct mcase // a case match
 {
-    int type; // ELSE, EXPR
+    enum type_mcase type; // ELSE, EXPR
     expr *cond;
     stmt *command; 
     struct mcase *next;
@@ -96,7 +101,7 @@ var* find_ident (char *s)
 	return v;
 }
 
-expr* make_expr (int type, int n, var *var, expr *left, expr *right)
+expr* make_expr (enum type_expr type, int n, var *var, expr *left, expr *right)
 {
 	expr *e = malloc(sizeof(expr));
     e->i = n;
@@ -107,7 +112,7 @@ expr* make_expr (int type, int n, var *var, expr *left, expr *right)
 	return e;
 }
 
-mcase* make_mcase (int type, expr *expr, stmt *stmt)
+mcase* make_mcase (enum type_mcase type, expr *expr, stmt *stmt)
 {
     mcase *c = malloc(sizeof(mcase));
     c->type = type;
@@ -117,7 +122,7 @@ mcase* make_mcase (int type, expr *expr, stmt *stmt)
     return c;
 }
 
-stmt* make_stmt (int type, mcase *mcase, var *var, expr *expr,
+stmt* make_stmt (enum type_stmt type, mcase *mcase, var *var, expr *expr,
 			stmt *left, stmt *right)
 {
 	stmt *s = malloc(sizeof(stmt));
@@ -171,8 +176,8 @@ lprocess* make_proc (stmt *stmt)
 %token DO OD IF FI ASSIGN OR AND XOR NOT PROC VAR ELSE SKIP END REACH BREAK INT GT EQ PLUS MINUS TIMES CASE THEN SEMC COMMA
 %token <c> IDENT
 
-%left ';'
-
+%left SEMC
+%left EQ GT PLUS MINUS TIMES 
 %left OR XOR
 %left AND
 %right NOT
@@ -213,18 +218,19 @@ cases : CASE expr THEN stmt {$$ = make_mcase(0,$2,$4); }
 assign	: IDENT ASSIGN expr 
 		{ $$ = make_stmt(ASSIGN,NULL,NULL,$3,NULL,NULL); }
 
-expr	: IDENT		{ $$ = make_expr(0,0,NULL,NULL,NULL); }
-	| expr XOR expr	{ $$ = make_expr(XOR,0,NULL,$1,$3); }
-	| expr OR expr	{ $$ = make_expr(OR,0,NULL,$1,$3); }
-	| expr AND expr	{ $$ = make_expr(AND,0,NULL,$1,$3); }
-    | expr EQ expr {$$ = make_expr(EQ,0,NULL,$1,$3); }
-    | expr PLUS expr	{ $$ = make_expr(PLUS,0,NULL,$1,$3); }
-    | expr MINUS expr	{ $$ = make_expr(MINUS,0,NULL,$1,$3); }
-    | expr TIMES expr	{ $$ = make_expr(TIMES,0,NULL,$1,$3); }
-    | expr GT expr	{ $$ = make_expr(GT,0,NULL,$1,$3); }
-	| NOT expr	{ $$ = make_expr(NOT,0,NULL,$2,NULL); }
-	| '(' expr ')'	{ $$ = $2; }
-    | INT 
+expr	: IDENT			{ $$ = make_expr(Ident,0,find_ident($1),NULL,NULL); }
+	| expr XOR expr		{ $$ = make_expr(Xor,0,NULL,$1,$3); }
+	| expr OR expr		{ $$ = make_expr(Or,0,NULL,$1,$3); }
+	| expr AND expr		{ $$ = make_expr(And,0,NULL,$1,$3); }
+    | expr EQ expr 		{$$ = make_expr(Eq,0,NULL,$1,$3); }
+    | expr PLUS expr	{ $$ = make_expr(Plus,0,NULL,$1,$3); }
+    | expr MINUS expr	{ $$ = make_expr(Minus,0,NULL,$1,$3); }
+    | expr TIMES expr	{ $$ = make_expr(Times,0,NULL,$1,$3); }
+    | expr GT expr		{ $$ = make_expr(Gt,0,NULL,$1,$3); }
+	| NOT expr			{ $$ = make_expr(Not,0,NULL,$2,NULL); }
+	| '(' expr ')'		{ $$ = $2; }
+    | INT 				{ $$ = yylval.e; }
+
 
 
 
@@ -232,6 +238,38 @@ expr	: IDENT		{ $$ = make_expr(0,0,NULL,NULL,NULL); }
 %%
 
 #include "lexer_des_best.c"
+
+int print_var(var var) {
+	printf("var %s = %d \n",var.name,var.value);
+	if (var.next != NULL){
+		print_var(*var.next);
+	};
+	return 0;
+}
+
+int print_expr(expr expr) {
+	return 0;
+}
+
+int print_stmt() {
+	return 0;
+}
+
+int print_mcase() {
+	return 0;
+}
+
+int print_decl() {
+	return 0;
+}
+
+int print_specification() {
+	return 0;
+}
+
+int print_lprocess() {
+	return 0;
+}
 
 int main (int argc, char **argv)
 {
