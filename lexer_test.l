@@ -3,6 +3,8 @@
 DIG	[0-9]
 %%
 
+"//"."\n" { }
+
 "var"    { printf("VAR "); }
 "proc"    { printf("PROC "); }
 "do"    { printf("DO "); }
@@ -33,7 +35,7 @@ DIG	[0-9]
 "*"    { printf("TIMES  "); }
 
 [a-z][a-z0-9]* {printf("IDENT "); }
-"//"[a-z0-9A-Z ]*"\n" { }
+
 [	 \n]    { }
 
 .	{ printf("erreur"); }

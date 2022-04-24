@@ -33,7 +33,7 @@ DIG	[0-9]
 "*"    { return TIMES ; }
 
 [a-z][a-z0-9]* { yylval.c = strdup(yytext); return IDENT; }
-"//"[a-z0-9A-Z ]*"\n" {  }
+"//"[a-zA-Z0-9ôâêîûéà',;:%ù^$£¨!?./<>&"()[]=]*"\n" {  }
 [	 \n]    { }
 
 .	{ }
