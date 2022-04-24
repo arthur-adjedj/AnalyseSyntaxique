@@ -20,7 +20,6 @@ typedef struct var	// a variable
 {
 	char *name;
 	int val;
-	struct var *next;
 } var;
 
 typedef struct expr	// boolean expression
@@ -90,15 +89,21 @@ decl* make_decl_list (var *v)
     return d;
 }
 
+int link_decl_lists(decl *d1, decl *d2){
+	if(d1->next = NULL){
+		d1->next = d2;
+	} else link_decl_lists(d1->next,d2);
+
+}
+
 var* make_ident (char *s)
 {
 	var *v = malloc(sizeof(var));
 	v->name = s;
 	v->val = 0;	// make variable false initially
-	v->next = NULL;
 	return v;
 }
-
+/*
 var* find_ident (char *s)
 {
 	var *v = decl_list->var;
@@ -106,6 +111,7 @@ var* find_ident (char *s)
 	if (!v) { yyerror("undeclared variable"); exit(1); }
 	return v;
 }
+*/
 
 expr* make_expr (enum type_expr type, int n, var *var, expr *left, expr *right)
 {
@@ -185,7 +191,7 @@ lprocess* make_proc (stmt *stmt)
     lprocess *p;
     char *c;
     decl *d;
-	var *v;
+	decl *v;
 	expr *e;
 	stmt *s;
     mcase *mc;
@@ -215,7 +221,7 @@ lprocess* make_proc (stmt *stmt)
 prog : declists procs specifications	{decl_list = $1; process_list = $2; specification_list = $3;}
 
 declists : {$$ = NULL; }
-    | declist declists {($$ = make_decl_list($1))->next = $2; }
+    | declist declists {link_decl_lists($$ = $1,$2); }
 
 procs : {$$ = NULL; }
     | PROC IDENT stmt END procs {($$ = make_proc($3))->next = $5; }
@@ -225,8 +231,8 @@ specifications : {$$ = NULL; }
 
 declist	: VAR declarations SEMC {$$ = $2;}
 
-declarations : IDENT { $$ = make_ident($1); }
-    | declarations COMMA IDENT { ($$ = make_ident($3))->next = $1; } 
+declarations : IDENT { $$ = make_decl_list(make_ident($1)); }
+    | declarations COMMA IDENT { ($$ = make_decl_list((make_ident($3))))->next = $1; } 
 
 stmt	: assign
 	| stmt SEMC stmt
@@ -266,10 +272,7 @@ expr	: IDENT			{ $$ = make_expr(Ident,0,NULL,NULL,NULL); }
 #include "lexer_des_best.c"
 
 int print_var(var *var) {
-	printf("var %s = %d \n",var->name,var->val);
-	if (var->next != NULL){
-		print_var(var->next);
-	};
+	printf("%s",var->name);
 	return 0;
 }
 
@@ -340,6 +343,8 @@ int print_expr(expr *expr) {
 	return 0;
 }
 
+int print_mcase(mcase *mcase);
+
 int print_stmt(stmt *stmt) {
 	switch (stmt->type){
 		case Assign:
@@ -355,13 +360,13 @@ int print_stmt(stmt *stmt) {
 
 		case Do:
 			printf("do \n");
-			print_mcase(stmt->val.mcase);
+			print_mcase(stmt->val.cases);
 			printf("od \n");
 		break;
 
 		case If:
 			printf("if \n");
-			print_mcase(stmt->val.mcase);
+			print_mcase(stmt->val.cases);
 			printf("fi \n");
 		break;
 
@@ -378,6 +383,17 @@ int print_stmt(stmt *stmt) {
 }
 
 int print_mcase(mcase *mcase) {
+	printf(":: ");
+	if (mcase->type==Expr){
+		print_expr(mcase->cond);
+	}
+	else printf("else");
+	printf(" -> ");
+	print_stmt(mcase->command);
+	printf("\n");
+	if(mcase->next != NULL){
+		print_mcase(mcase->next);
+	};
 	return 0;
 }
 
