@@ -239,7 +239,7 @@ specifications : {$$ = NULL; }
     | REACH expr specifications {($$ = make_sp($2))->next = $3; }
 
 stmt	: assign
-	// | VAR declarations { $$ = make_stmt(Var,NULL,NULL,NULL,NULL,NULL,$2); }
+	| VAR declarations { $$ = make_stmt(Var,NULL,NULL,NULL,NULL,NULL,$2); }
 	| stmt SEMC stmt
 		{ $$ = make_stmt(Semic,NULL,NULL,NULL,$1,$3,NULL); }
 	| DO cases OD

@@ -1,5 +1,6 @@
 //As d
+var x;
 
 proc p
-    x := 2
+    skip
 end
