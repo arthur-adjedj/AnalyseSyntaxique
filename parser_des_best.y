@@ -5,7 +5,7 @@
 #include <string.h>
 
 enum type_expr{Ident, Int, Or, Xor, And, Not, Gt, Eq, Plus, Minus, Times, Zero};
-enum type_stmt{Assign, Semic, Do, If, Skip, Break} ;
+enum type_stmt{Assign, Semic, Do, If, Skip, Break, Var} ;
 enum type_mcase{Else, Expr};
 
 int yylex();
@@ -37,7 +37,7 @@ typedef struct expr	// boolean expression
 
 typedef struct stmt	// command
 {
-	enum type_stmt type;	// Assign, Semic, Do, If, Skip, Break
+	enum type_stmt type;	// Assign, Semic, Do, If, Skip, Break, Var
 	union {
 		struct {
 			var *var;
@@ -47,6 +47,7 @@ typedef struct stmt	// command
 		struct {
 			struct stmt *left, *right;
 		} sub;
+		struct decl *decl;
 
 	} val;
 } stmt;
@@ -146,7 +147,7 @@ mcase* make_mcase (enum type_mcase type, expr *expr, stmt *stmt)
 }
 
 stmt* make_stmt (enum type_stmt type, mcase *mcase, var *var, expr *expr,
-			stmt *left, stmt *right)
+			stmt *left, stmt *right, decl *decl)
 {
 	stmt *s = malloc(sizeof(stmt));
 	s->type = type;
@@ -159,6 +160,10 @@ stmt* make_stmt (enum type_stmt type, mcase *mcase, var *var, expr *expr,
 		case Semic:
 				s->val.sub.left = left;
 				s->val.sub.right = right;
+		break;
+
+		case Var:
+			s->val.decl = decl;
 		break;
 
 		default:
@@ -202,7 +207,7 @@ lprocess* make_proc (char *name,stmt *stmt)
 %type <sp> specifications
 %type <p> procs
 %type <d> declists 
-%type <v> declarations declist
+%type <v> declarations declist 
 %type <e> expr
 %type <s> stmt assign
 %type <mc> cases
@@ -222,37 +227,38 @@ lprocess* make_proc (char *name,stmt *stmt)
 
 prog : declists procs specifications	{decl_list = $1; process_list = $2; specification_list = $3;}
 
-declists : {$$ = NULL; }
-    | declist declists {link_decl_lists($$ = $1,$2); }
+declists : {printf("ahah\n"); $$ = NULL; }
+    | declist declists {printf("youpi \n"); link_decl_lists($$ = $1,$2); }
+
+declist	: VAR declarations SEMC {printf("var\n"); $$ = $2;}
 
 procs : {$$ = NULL; }
-    | PROC IDENT stmt END procs {($$ = make_proc($2,$3))->next = $5; }
+    | PROC IDENT stmt END procs {printf("hihihi\n"); ($$ = make_proc($2,$3))->next = $5; }
 
 specifications : {$$ = NULL; }
     | REACH expr specifications {($$ = make_sp($2))->next = $3; }
 
-declist	: VAR declarations SEMC {$$ = $2;}
+stmt	: assign
+	// | VAR declarations { $$ = make_stmt(Var,NULL,NULL,NULL,NULL,NULL,$2); }
+	| stmt SEMC stmt
+		{ $$ = make_stmt(Semic,NULL,NULL,NULL,$1,$3,NULL); }
+	| DO cases OD
+		{ $$ = make_stmt(Do,$2,NULL,NULL,NULL,NULL,NULL); }
+    | IF cases FI {$$ = make_stmt(If,$2,NULL,NULL,NULL,NULL,NULL); } 
+    | SKIP { $$ = make_stmt(Skip,NULL,NULL,NULL,NULL,NULL,NULL); }
+    | BREAK { $$ = make_stmt(Break,NULL,NULL,NULL,NULL,NULL,NULL);}
 
 declarations : IDENT { $$ = make_decl_list(make_ident($1)); }
     | declarations COMMA IDENT { ($$ = make_decl_list((make_ident($3))))->next = $1; } 
-
-stmt	: assign
-	| stmt SEMC stmt
-		{ $$ = make_stmt(SEMC,NULL,NULL,NULL,$1,$3); }
-	| DO cases OD
-		{ $$ = make_stmt(DO,$2,NULL,NULL,NULL,NULL); }
-    | IF cases FI {$$ = make_stmt(IF,$2,NULL,NULL,NULL,NULL); } 
-    | SKIP { $$ = make_stmt(SKIP,NULL,NULL,NULL,NULL,NULL); }
-    | BREAK { $$ = make_stmt(BREAK,NULL,NULL,NULL,NULL,NULL);}
 
 cases : CASE expr THEN stmt {$$ = make_mcase(0,$2,$4); }
     | CASE ELSE THEN stmt {$$ = make_mcase(ELSE,NULL,$4); }
     | CASE expr THEN stmt cases {($$ = make_mcase(0,$2,$4))->next = $5; }        
 
 assign	: IDENT ASSIGN expr 
-		{ $$ = make_stmt(ASSIGN,NULL,NULL,$3,NULL,NULL); }
+		{ $$ = make_stmt(Assign,NULL,NULL,$3,NULL,NULL,NULL); }
 
-expr	: IDENT			{ $$ = make_expr(Ident,0,NULL,NULL,NULL); }
+expr	: IDENT			{ printf("expr_ident"); $$ = make_expr(Ident,0,NULL,NULL,NULL); }
 	| expr XOR expr		{ $$ = make_expr(Xor,0,NULL,$1,$3); }
 	| expr OR expr		{ $$ = make_expr(Or,0,NULL,$1,$3); }
 	| expr AND expr		{ $$ = make_expr(And,0,NULL,$1,$3); }
@@ -436,6 +442,7 @@ int main (int argc, char **argv)
 	if (argc > 1) yyin = fopen(/*argv[1]*/ "./test2","r");
 	yyparse();
 	printf("parsing done, now printing");
+	printf("%p",decl_list);
 	print_decl(decl_list);
 	print_lprocess(process_list);
 	print_specification(specification_list);

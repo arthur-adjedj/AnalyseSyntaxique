@@ -1,16 +1,1 @@
-var x,y,z;
-var fin;
-
-proc p
-        var tmp;
-
     
-
-
-        fin := 1
-end
-
-reach fin		
-reach fin && x > y     
-reach fin && y > z      
-reach fin && x > z      
