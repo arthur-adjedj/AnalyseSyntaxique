@@ -73,6 +73,7 @@ typedef struct specification // list of specifications
 
 typedef struct lprocess	// list of processes
 {
+	char *name;
 	stmt *command;
     struct lprocess *next; 
 } lprocess;
@@ -175,9 +176,10 @@ specification* make_sp (expr *expr)
     return sp;
 }
 
-lprocess* make_proc (stmt *stmt)
+lprocess* make_proc (char *name,stmt *stmt)
 {
     lprocess *p = malloc(sizeof(lprocess));
+	p->name = name;
     p->command = stmt;
     p->next = NULL;
     return p;
@@ -224,7 +226,7 @@ declists : {$$ = NULL; }
     | declist declists {link_decl_lists($$ = $1,$2); }
 
 procs : {$$ = NULL; }
-    | PROC IDENT stmt END procs {($$ = make_proc($3))->next = $5; }
+    | PROC IDENT stmt END procs {($$ = make_proc($2,$3))->next = $5; }
 
 specifications : {$$ = NULL; }
     | REACH expr specifications {($$ = make_sp($2))->next = $3; }
@@ -272,145 +274,169 @@ expr	: IDENT			{ $$ = make_expr(Ident,0,NULL,NULL,NULL); }
 #include "lexer_des_best.c"
 
 int print_var(var *var) {
-	printf("%s",var->name);
+	if(var != NULL){
+		printf("%s",var->name);
+	}
 	return 0;
 }
 
 int print_expr(expr *expr) {
-	switch (expr->type)
-	{
-		case Ident:
-			printf("%s", expr->val.var->name);
-		break;
+	if(expr != NULL){
+		switch (expr->type)
+		{
+			case Ident:
+				printf("%s", expr->val.var->name);
+			break;
 
-		case Int:
-			printf("%d", expr->val.i);
-		break;
+			case Int:
+				printf("%d", expr->val.i);
+			break;
 
-		case Or:
-			print_expr(expr->val.sub.left);
-			printf(" || ");
-			print_expr(expr->val.sub.right);
-		break;
+			case Or:
+				print_expr(expr->val.sub.left);
+				printf(" || ");
+				print_expr(expr->val.sub.right);
+			break;
 
-		case And:
-			print_expr(expr->val.sub.left);
-			printf(" && ");
-			print_expr(expr->val.sub.right);
-		break;
+			case And:
+				print_expr(expr->val.sub.left);
+				printf(" && ");
+				print_expr(expr->val.sub.right);
+			break;
 
-		case Xor:
-			print_expr(expr->val.sub.left);
-			printf(" ^ ");
-			print_expr(expr->val.sub.right);
-		break;
+			case Xor:
+				print_expr(expr->val.sub.left);
+				printf(" ^ ");
+				print_expr(expr->val.sub.right);
+			break;
 
-		case Gt:
-			print_expr(expr->val.sub.left);
-			printf(" > ");
-			print_expr(expr->val.sub.right);
-		break;
+			case Gt:
+				print_expr(expr->val.sub.left);
+				printf(" > ");
+				print_expr(expr->val.sub.right);
+			break;
 
-		case Eq:
-			print_expr(expr->val.sub.left);
-			printf(" == ");
-			print_expr(expr->val.sub.right);
-		break;
+			case Eq:
+				print_expr(expr->val.sub.left);
+				printf(" == ");
+				print_expr(expr->val.sub.right);
+			break;
 
-		case Plus:
-			print_expr(expr->val.sub.left);
-			printf(" + ");
-			print_expr(expr->val.sub.right);
-		break;
+			case Plus:
+				print_expr(expr->val.sub.left);
+				printf(" + ");
+				print_expr(expr->val.sub.right);
+			break;
 
-		case Minus:
-			print_expr(expr->val.sub.left);
-			printf(" - ");
-			print_expr(expr->val.sub.right);
-		break;
+			case Minus:
+				print_expr(expr->val.sub.left);
+				printf(" - ");
+				print_expr(expr->val.sub.right);
+			break;
 
-		case Times:
-			print_expr(expr->val.sub.left);
-			printf(" * ");
-			print_expr(expr->val.sub.right);
-		break;
+			case Times:
+				print_expr(expr->val.sub.left);
+				printf(" * ");
+				print_expr(expr->val.sub.right);
+			break;
 
-		case Not:
-			printf("~");
-			print_expr(expr->val.sub.left);
-		break;
-	}
+			case Not:
+				printf("~");
+				print_expr(expr->val.sub.left);
+			break;
+		}
+	}	
 	return 0;
 }
 
 int print_mcase(mcase *mcase);
 
 int print_stmt(stmt *stmt) {
-	switch (stmt->type){
-		case Assign:
-			printf("%s := ",stmt->val.assign.var->name);
-			print_expr(stmt->val.assign.expr);
-		break;
+	if(stmt != NULL){
+		switch (stmt->type){
+			case Assign:
+				printf("%s := ",stmt->val.assign.var->name);
+				print_expr(stmt->val.assign.expr);
+			break;
 
-		case Semic:
-			print_stmt(stmt->val.sub.left);
-			printf(";\n");
-			print_stmt(stmt->val.sub.right);
-		break;	
+			case Semic:
+				print_stmt(stmt->val.sub.left);
+				printf(";\n");
+				print_stmt(stmt->val.sub.right);
+			break;	
 
-		case Do:
-			printf("do \n");
-			print_mcase(stmt->val.cases);
-			printf("od \n");
-		break;
+			case Do:
+				printf("do \n");
+				print_mcase(stmt->val.cases);
+				printf("od \n");
+			break;
 
-		case If:
-			printf("if \n");
-			print_mcase(stmt->val.cases);
-			printf("fi \n");
-		break;
+			case If:
+				printf("if \n");
+				print_mcase(stmt->val.cases);
+				printf("fi \n");
+			break;
 
-		case Skip:
-			printf("skip");
-		break;
+			case Skip:
+				printf("skip");
+			break;
 
-		case Break:
-			printf("break");
-		break;
+			case Break:
+				printf("break");
+			break;
+		}
 	}
-
 	return 0;
 }
 
 int print_mcase(mcase *mcase) {
-	printf(":: ");
-	if (mcase->type==Expr){
-		print_expr(mcase->cond);
-	}
-	else printf("else");
-	printf(" -> ");
-	print_stmt(mcase->command);
-	printf("\n");
-	if(mcase->next != NULL){
+	if(mcase != NULL){
+		printf(":: ");
+		if (mcase->type==Expr){
+			print_expr(mcase->cond);
+		}
+		else printf("else");
+		printf(" -> ");
+		print_stmt(mcase->command);
+		printf("\n");
 		print_mcase(mcase->next);
 	};
 	return 0;
 }
 
-int print_decl() {
+int print_decl(decl *decl) {
+	if(decl != NULL){
+		printf("var %s \n",decl->var->name);
+		print_decl(decl->next);
+	}
 	return 0;
 }
 
-int print_specification() {
+int print_specification(specification *spec) {
+	if(spec != NULL){
+		printf("reach ");	
+		print_expr(spec->expr);
+		print_specification(spec->next);
+	};
 	return 0;
 }
 
-int print_lprocess() {
+int print_lprocess(lprocess *proc) {
+	if(proc != NULL){
+		printf("proc %s \n",proc->name);
+		print_stmt(proc->command);
+		printf("end \n");
+		print_lprocess(proc->next);
+	};
 	return 0;
 }
 
 int main (int argc, char **argv)
 {
-	if (argc > 1) yyin = fopen(argv[1],"r");
+	if (argc > 1) yyin = fopen(/*argv[1]*/ "./test2","r");
 	yyparse();
+	printf("parsing done, now printing");
+	print_decl(decl_list);
+	print_lprocess(process_list);
+	print_specification(specification_list);
 }
