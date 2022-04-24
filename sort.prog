@@ -6,7 +6,6 @@ var fin;
 proc p
         var tmp;
 
-        // choisir une permutation aléatoire
         if
         :: 1 -> x := 0; y := 1; z := 2
         :: 1 -> x := 1; y := 0; z := 2
@@ -16,7 +15,6 @@ proc p
         :: 1 -> x := 2; y := 1; z := 0
         fi;
 
-        // trier x,y,z
         if
         :: x > y -> tmp := x; x := y; y := tmp
         :: else -> skip

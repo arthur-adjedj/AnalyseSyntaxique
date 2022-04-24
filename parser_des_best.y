@@ -91,7 +91,7 @@ decl* make_decl_list (var *v)
     return d;
 }
 
-int print_decl(decl *decl);
+int print_decl(decl *decl,int dec);
 
 int link_decl_lists(decl *d1, decl *d2){
 	if(d1 != NULL){
@@ -365,65 +365,82 @@ int print_expr(expr *expr) {
 	return 0;
 }
 
-int print_mcase(mcase *mcase);
+int print_mcase(mcase *mcase,int dec);
 
-int print_stmt(stmt *stmt) {
+char* n_tab(int n) {
+	if (n == 0) {return "";} else {
+	int fullsize = n * strlen("  ") + 1;
+	char* fullword;
+	fullword = (char *) malloc( fullsize );
+    strcpy( fullword, "" );
+	strcat(fullword,"  ");
+	strcat(fullword,n_tab(n-1));
+	fullword;
+	}
+	
+}
+
+int print_stmt(stmt *stmt, int dec) {
 	if(stmt != NULL){
 		switch (stmt->type){
 			case Assign:
-				printf("%s := ",stmt->val.assign.var->name);
+				printf("%s%s := ",n_tab(dec),stmt->val.assign.var->name);
 				print_expr(stmt->val.assign.expr);
 			break;
 
+			case Var:
+				print_decl(stmt->val.decl,dec);
+			break;
+
 			case Semic:
-				print_stmt(stmt->val.sub.left);
+				print_stmt(stmt->val.sub.left,dec);
 				printf(";\n");
-				print_stmt(stmt->val.sub.right);
+				print_stmt(stmt->val.sub.right,dec);
 			break;	
 
 			case Do:
-				printf("do \n");
-				print_mcase(stmt->val.cases);
-				printf("od \n");
+				printf("%sdo \n",n_tab(dec));
+				print_mcase(stmt->val.cases,dec+1);
+				printf("%sod",n_tab(dec));
 			break;
 
 			case If:
-				printf("if \n");
-				print_mcase(stmt->val.cases);
-				printf("fi \n");
+				printf("%sif \n",n_tab(dec));
+				print_mcase(stmt->val.cases,dec+1);
+				printf("%sfi",n_tab(dec));
 			break;
 
 			case Skip:
-				printf("skip");
+				printf("%sskip",n_tab(dec));
 			break;
 
 			case Break:
-				printf("break");
+				printf("%sbreak",n_tab(dec));
 			break;
 		}
 	}
 	return 0;
 }
 
-int print_mcase(mcase *mcase) {
+int print_mcase(mcase *mcase,int dec) {
 	if(mcase != NULL){
-		printf(":: ");
+		printf("%s:: ",n_tab(dec));
 		if (mcase->type==Expr){
 			print_expr(mcase->cond);
 		}
 		else printf("else");
-		printf(" -> ");
-		print_stmt(mcase->command);
+		printf(" ->\n");
+		print_stmt(mcase->command,dec+2);
 		printf("\n");
-		print_mcase(mcase->next);
+		print_mcase(mcase->next,dec);
 	};
 	return 0;
 }
 
-int print_decl(decl *decl) {
+int print_decl(decl *decl,int dec) {
 	if(decl != NULL){
-		printf("var %s \n",decl->var->name);
-		print_decl(decl->next);
+		printf("%svar %s \n",n_tab(dec),decl->var->name);
+		print_decl(decl->next,dec);
 	};
 	return 0;
 }
@@ -432,7 +449,8 @@ int print_specification(specification *spec);
 int print_specification(specification *spec) {
 	if(spec != NULL){
 		printf("reach ");	
-		int a = print_expr(spec->expr);
+		print_expr(spec->expr);
+		printf("\n");
 		print_specification(spec->next);
 	};
 	return 0;
@@ -441,8 +459,8 @@ int print_specification(specification *spec) {
 int print_lprocess(lprocess *proc) {
 	if(proc != NULL){
 		printf("proc %s \n",proc->name);
-		print_stmt(proc->command);
-		printf("\nend \n");
+		print_stmt(proc->command,1);
+		printf("\nend \n\n");
 		print_lprocess(proc->next);
 	};
 	return 0;
@@ -450,10 +468,10 @@ int print_lprocess(lprocess *proc) {
 
 int main (int argc, char **argv)
 {
-	yyin = fopen(/*argv[1]*/ "./peterson.prog","r");
+	yyin = fopen(/*argv[1]*/ "./sort.prog","r");
 	yyparse();
 	printf("parsing done, now printing \n");
-	print_decl(decl_list);
+	print_decl(decl_list,0);
 	printf("\n");
 	print_lprocess(process_list);
 	printf("\n");
