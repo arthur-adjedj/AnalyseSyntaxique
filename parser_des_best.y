@@ -4,9 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 enum type_expr{Ident, Int, Or, Xor, And, Not, Gt, Eq, Plus, Minus, Times, Zero};
-enum type_stmt{Assign, Semic, Do, If, Skip, Cases} ;
+enum type_stmt{Assign, Semic, Do, If, Skip, Break} ;
 enum type_mcase{Else, Expr};
 
 int yylex();
@@ -20,31 +19,42 @@ void yyerror(char *s)
 typedef struct var	// a variable
 {
 	char *name;
-	int value;
+	int val;
 	struct var *next;
 } var;
 
 typedef struct expr	// boolean expression
 {
-	enum type_expr type;	// INT, OR, XOR, AND, NOT, GT, EQ, PLUS, MINUS, TIMES, 0 (variable)
-    int i;
-	var *var;
-	struct expr *left, *right;
+	enum type_expr type;	//Ident (variable), Int, Or, Xor, And, Not, Gt, Eq, Plus, Minus Times
+	union {
+    	int i;
+		var *var;
+		struct {
+			struct expr *left, *right;
+		} sub;
+	} val;
 } expr;
 
 
 typedef struct stmt	// command
 {
-	enum type_stmt type;	// ASSIGN, ';', DO, IF, SKIP, CASES
-	var *var;
-	expr *expr;
-    struct mcase *cases; 
-	struct stmt *left, *right;
+	enum type_stmt type;	// Assign, Semic, Do, If, Skip, Break
+	union {
+		struct {
+			var *var;
+			expr *expr;
+		} assign;
+		struct mcase *cases;
+		struct {
+			struct stmt *left, *right;
+		} sub;
+
+	} val;
 } stmt;
 
 typedef struct mcase // a case match
 {
-    enum type_mcase type; // ELSE, EXPR
+    enum type_mcase type; // Else, Expr
     expr *cond;
     stmt *command; 
     struct mcase *next;
@@ -55,10 +65,6 @@ typedef struct decl	// a variable
 	var *var;
     struct decl *next;
 } decl;
-
-
-
-
 
 typedef struct specification // list of specifications
 {
@@ -88,7 +94,7 @@ var* make_ident (char *s)
 {
 	var *v = malloc(sizeof(var));
 	v->name = s;
-	v->value = 0;	// make variable false initially
+	v->val = 0;	// make variable false initially
 	v->next = NULL;
 	return v;
 }
@@ -104,11 +110,21 @@ var* find_ident (char *s)
 expr* make_expr (enum type_expr type, int n, var *var, expr *left, expr *right)
 {
 	expr *e = malloc(sizeof(expr));
-    e->i = n;
 	e->type = type;
-	e->var = var;
-	e->left = left;
-	e->right = right;
+	switch(type){
+		case Ident:
+			e->val.var = var;
+		break;
+		
+		case Int:
+			e->val.i = n;
+		break;
+
+		default:
+			e->val.sub.left = left;
+			e->val.sub.right = right;
+		break;
+	};
 	return e;
 }
 
@@ -127,11 +143,21 @@ stmt* make_stmt (enum type_stmt type, mcase *mcase, var *var, expr *expr,
 {
 	stmt *s = malloc(sizeof(stmt));
 	s->type = type;
-    s->cases = mcase;
-	s->var = var;
-	s->expr = expr;
-	s->left = left;
-	s->right = right;
+	switch(type){
+		case Assign:
+			s->val.assign.var = var;
+			s->val.assign.expr = expr;
+		break;
+
+		case Semic:
+				s->val.sub.left = left;
+				s->val.sub.right = right;
+		break;
+
+		default:
+			    s->val.cases = mcase;
+		break;
+	}
 	return s;
 }
 
@@ -239,23 +265,119 @@ expr	: IDENT			{ $$ = make_expr(Ident,0,NULL,NULL,NULL); }
 
 #include "lexer_des_best.c"
 
-int print_var(var var) {
-	printf("var %s = %d \n",var.name,var.value);
-	if (var.next != NULL){
-		print_var(*var.next);
+int print_var(var *var) {
+	printf("var %s = %d \n",var->name,var->val);
+	if (var->next != NULL){
+		print_var(var->next);
 	};
 	return 0;
 }
 
-int print_expr(expr expr) {
+int print_expr(expr *expr) {
+	switch (expr->type)
+	{
+		case Ident:
+			printf("%s", expr->val.var->name);
+		break;
+
+		case Int:
+			printf("%d", expr->val.i);
+		break;
+
+		case Or:
+			print_expr(expr->val.sub.left);
+			printf(" || ");
+			print_expr(expr->val.sub.right);
+		break;
+
+		case And:
+			print_expr(expr->val.sub.left);
+			printf(" && ");
+			print_expr(expr->val.sub.right);
+		break;
+
+		case Xor:
+			print_expr(expr->val.sub.left);
+			printf(" ^ ");
+			print_expr(expr->val.sub.right);
+		break;
+
+		case Gt:
+			print_expr(expr->val.sub.left);
+			printf(" > ");
+			print_expr(expr->val.sub.right);
+		break;
+
+		case Eq:
+			print_expr(expr->val.sub.left);
+			printf(" == ");
+			print_expr(expr->val.sub.right);
+		break;
+
+		case Plus:
+			print_expr(expr->val.sub.left);
+			printf(" + ");
+			print_expr(expr->val.sub.right);
+		break;
+
+		case Minus:
+			print_expr(expr->val.sub.left);
+			printf(" - ");
+			print_expr(expr->val.sub.right);
+		break;
+
+		case Times:
+			print_expr(expr->val.sub.left);
+			printf(" * ");
+			print_expr(expr->val.sub.right);
+		break;
+
+		case Not:
+			printf("~");
+			print_expr(expr->val.sub.left);
+		break;
+	}
 	return 0;
 }
 
-int print_stmt() {
+int print_stmt(stmt *stmt) {
+	switch (stmt->type){
+		case Assign:
+			printf("%s := ",stmt->val.assign.var->name);
+			print_expr(stmt->val.assign.expr);
+		break;
+
+		case Semic:
+			print_stmt(stmt->val.sub.left);
+			printf(";\n");
+			print_stmt(stmt->val.sub.right);
+		break;	
+
+		case Do:
+			printf("do \n");
+			print_mcase(stmt->val.mcase);
+			printf("od \n");
+		break;
+
+		case If:
+			printf("if \n");
+			print_mcase(stmt->val.mcase);
+			printf("fi \n");
+		break;
+
+		case Skip:
+			printf("skip");
+		break;
+
+		case Break:
+			printf("break");
+		break;
+	}
+
 	return 0;
 }
 
-int print_mcase() {
+int print_mcase(mcase *mcase) {
 	return 0;
 }
 
