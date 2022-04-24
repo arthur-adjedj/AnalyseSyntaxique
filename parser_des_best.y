@@ -159,7 +159,6 @@ stmt* make_stmt (enum type_stmt type, mcase *mcase, var *var, expr *expr,
 	s->type = type;
 	switch(type){
 		case Assign:
-			printf("making an assign : %p, %s, %p\n",var,var->name,expr);
 			s->val.assign.var = var;
 			s->val.assign.expr = expr;
 		break;
@@ -215,12 +214,13 @@ lprocess* make_proc (char *name,stmt *stmt)
 %type <p> procs
 %type <d> declists 
 %type <v> declarations declist 
-%type <e> expr
+%type <e> expr 
 %type <s> stmt assign
 %type <mc> cases
 
-%token DO OD IF FI ASSIGN OR AND XOR NOT PROC VAR ELSE SKIP END REACH BREAK INT GT EQ PLUS MINUS TIMES CASE THEN SEMC COMMA
+%token DO OD IF FI ASSIGN OR AND XOR NOT PROC VAR ELSE SKIP END REACH BREAK GT EQ PLUS MINUS TIMES CASE THEN SEMC COMMA
 %token <c> IDENT
+%token <e> INT
 
 %left SEMC
 %left EQ GT PLUS MINUS TIMES 
@@ -258,17 +258,17 @@ stmt	: assign
     | SKIP { $$ = make_stmt(Skip,NULL,NULL,NULL,NULL,NULL,NULL); }
     | BREAK { $$ = make_stmt(Break,NULL,NULL,NULL,NULL,NULL,NULL);}
 
-declarations : IDENT { printf("%s \n",yylval.c); $$ = make_decl_list(make_ident($1)); }
-    | declarations COMMA IDENT {printf("%s \n",yylval.c); ($$ = make_decl_list((make_ident($3))))->next = $1; } 
+declarations : IDENT { $$ = make_decl_list(make_ident($1)); }
+    | declarations COMMA IDENT {($$ = make_decl_list((make_ident($3))))->next = $1; } 
 
-cases : CASE expr THEN stmt {$$ = make_mcase(0,$2,$4); }
-    | CASE ELSE THEN stmt {$$ = make_mcase(ELSE,NULL,$4); }
-    | CASE expr THEN stmt cases {($$ = make_mcase(0,$2,$4))->next = $5; }        
+cases : CASE expr THEN stmt {$$ = make_mcase(Expr,$2,$4); }
+    | CASE ELSE THEN stmt {$$ = make_mcase(Else,NULL,$4); }
+    | CASE expr THEN stmt cases {($$ = make_mcase(Expr,$2,$4))->next = $5; }        
 
 assign	: IDENT ASSIGN expr 
-		{printf("%s \n",yylval.c); $$ = make_stmt(Assign,NULL,make_ident(yylval.c),$3,NULL,NULL,NULL); }
+		{ $$ = make_stmt(Assign,NULL,make_ident($1),$3,NULL,NULL,NULL); }
 
-expr	: IDENT			{ printf("expr_ident"); $$ = make_expr(Ident,0,NULL,NULL,NULL); }
+expr	: IDENT			{ $$ = make_expr(Ident,0,make_ident($1),NULL,NULL); }
 	| expr XOR expr		{ $$ = make_expr(Xor,0,NULL,$1,$3); }
 	| expr OR expr		{ $$ = make_expr(Or,0,NULL,$1,$3); }
 	| expr AND expr		{ $$ = make_expr(And,0,NULL,$1,$3); }
@@ -279,7 +279,7 @@ expr	: IDENT			{ printf("expr_ident"); $$ = make_expr(Ident,0,NULL,NULL,NULL); }
     | expr GT expr		{ $$ = make_expr(Gt,0,NULL,$1,$3); }
 	| NOT expr			{ $$ = make_expr(Not,0,NULL,$2,NULL); }
 	| '(' expr ')'		{ $$ = $2; }
-    | INT 				{ $$ = yylval.e; }
+    | INT 				{ $$ = $1; }
 
 
 
@@ -427,11 +427,12 @@ int print_decl(decl *decl) {
 	};
 	return 0;
 }
+int print_specification(specification *spec);
 
 int print_specification(specification *spec) {
 	if(spec != NULL){
 		printf("reach ");	
-		print_expr(spec->expr);
+		int a = print_expr(spec->expr);
 		print_specification(spec->next);
 	};
 	return 0;
@@ -449,7 +450,7 @@ int print_lprocess(lprocess *proc) {
 
 int main (int argc, char **argv)
 {
-	yyin = fopen(/*argv[1]*/ "./test2","r");
+	yyin = fopen(/*argv[1]*/ "./peterson.prog","r");
 	yyparse();
 	printf("parsing done, now printing \n");
 	print_decl(decl_list);

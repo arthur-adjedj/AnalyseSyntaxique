@@ -1,5 +1,9 @@
+var x,y;
 
 proc p
     x := 2;
-    skip
+    skip;
+    break
 end
+
+reach c == 1

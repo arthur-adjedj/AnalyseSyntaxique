@@ -15,7 +15,7 @@ DIG	[0-9]
 "reach"    { return REACH; }
 "break"    { return BREAK; }
 
-{DIG}+     { yylval.e = make_expr(INT,atoi(yytext),NULL,NULL,NULL); return INT; }
+{DIG}+     { yylval.e = make_expr(Int,atoi(yytext),NULL,NULL,NULL); return INT; }
 
 ";"    { return SEMC ;}
 ","    { return COMMA ; }

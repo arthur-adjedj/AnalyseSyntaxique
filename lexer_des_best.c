@@ -820,7 +820,7 @@ YY_RULE_SETUP
 case 12:
 YY_RULE_SETUP
 #line 18 "lexer_des_best.l"
-{ yylval.e = make_expr(INT,atoi(yytext),NULL,NULL,NULL); return INT; }
+{ yylval.e = make_expr(Int,atoi(yytext),NULL,NULL,NULL); return INT; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
