@@ -2,6 +2,11 @@ var x;
 
 proc p
     do
-        :: 1 -> x := x + 1 
+        :: 1 -> 
+        if 
+            :: 1 -> x := x * 100
+            :: 1 -> x := x + 1
+        fi;
+        skip
     od
 end
