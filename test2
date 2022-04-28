@@ -1,9 +1,7 @@
-var x,y;
+var x;
 
 proc p
-    x := 2;
-    skip;
-    break
+    do
+        :: 1 -> x := x + 1 
+    od
 end
-
-reach c == 1

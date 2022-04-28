@@ -5,7 +5,7 @@
 #include <string.h>
 
 enum type_expr{Ident, Int, Or, Xor, And, Not, Gt, Eq, Plus, Minus, Times, Zero};
-enum type_stmt{Assign, Semic, Do, If, Skip, Break, Var} ;
+enum type_stmt{Assign, Semic, Do, If, Skip, Break} ;
 enum type_mcase{Else, Expr};
 
 int yylex();
@@ -37,7 +37,7 @@ typedef struct expr	// boolean expression
 
 typedef struct stmt	// command
 {
-	enum type_stmt type;	// Assign, Semic, Do, If, Skip, Break, Var
+	enum type_stmt type;	// Assign, Semic, Do, If, Skip, Break
 	union {
 		struct {
 			var *var;
@@ -47,9 +47,9 @@ typedef struct stmt	// command
 		struct {
 			struct stmt *left, *right;
 		} sub;
-		struct decl *decl;
 
 	} val;
+	int youre_here;  // si l'evaluation du processus en est à cette étape
 } stmt;
 
 typedef struct mcase // a case match
@@ -75,8 +75,10 @@ typedef struct specification // list of specifications
 typedef struct lprocess	// list of processes
 {
 	char *name;
-	stmt *command;
+	struct stmt *command;
     struct lprocess *next; 
+	struct decl *vars;
+	int alive;
 } lprocess;
 
 lprocess *process_list;
@@ -111,15 +113,37 @@ var* make_ident (char *s)
 	v->val = 0;	// make variable false initially
 	return v;
 }
-/*
-var* find_ident (char *s)
+
+var* find_ident_d (char *s,decl *d_start)
 {
-	var *v = decl_list->var;
-	while (v && strcmp(v->name,s)) v = v->next;
-	if (!v) { yyerror("undeclared variable"); exit(1); }
-	return v;
+	struct decl *d = d_start; 
+	while (d && strcmp(d->var->name,s)) d = d->next;
+	if (!d) { return NULL; }
+	return d->var;
 }
-*/
+
+var* find_ident_p (char *s, lprocess *p) 
+{
+	struct var *first_try = find_ident_d(s,decl_list);
+	if (!first_try)
+	{
+		struct var *second_try = find_ident_d(s,p->vars);
+		if (!second_try) 
+		{
+			yyerror("cette variable n'existe pas");
+		}
+		else
+		{
+			return second_try;
+		}
+	}
+	else
+	{
+		return first_try;
+	}
+
+}
+
 
 expr* make_expr (enum type_expr type, int n, var *var, expr *left, expr *right)
 {
@@ -153,10 +177,11 @@ mcase* make_mcase (enum type_mcase type, expr *expr, stmt *stmt)
 }
 
 stmt* make_stmt (enum type_stmt type, mcase *mcase, var *var, expr *expr,
-			stmt *left, stmt *right, decl *decl)
+			stmt *left, stmt *right)
 {
 	stmt *s = malloc(sizeof(stmt));
 	s->type = type;
+	s->youre_here = 0;
 	switch(type){
 		case Assign:
 			s->val.assign.var = var;
@@ -168,14 +193,11 @@ stmt* make_stmt (enum type_stmt type, mcase *mcase, var *var, expr *expr,
 				s->val.sub.right = right;
 		break;
 
-		case Var:
-			s->val.decl = decl;
-		break;
-
 		default:
 			    s->val.cases = mcase;
 		break;
 	}
+	
 	return s;
 }
 
@@ -187,12 +209,14 @@ specification* make_sp (expr *expr)
     return sp;
 }
 
-lprocess* make_proc (char *name,stmt *stmt)
+lprocess* make_proc (char *name,stmt *stmt, decl *decl)
 {
     lprocess *p = malloc(sizeof(lprocess));
 	p->name = name;
     p->command = stmt;
     p->next = NULL;
+	p->vars = decl;
+	p->alive = 1;
     return p;
 }
 
@@ -232,31 +256,27 @@ lprocess* make_proc (char *name,stmt *stmt)
 
 %%
 
-prog : declists procs specifications	{decl_list = $1; process_list = $2; specification_list = $3;}
-
-declists : {$$ = NULL; }
-    | declist declists {
-		link_decl_lists($1,$2); 
-		$$ = $1;
-		}
-
-declist	: VAR declarations SEMC { $$ = $2;}
+prog : declists procs specifications	{ decl_list = $1; process_list = $2; specification_list = $3;}
 
 procs : {$$ = NULL; }
-    | PROC IDENT stmt END procs {($$ = make_proc($2,$3))->next = $5; }
+    | PROC IDENT declists stmt END procs {($$ = make_proc($2,$4,$3))->next = $6; }
+
+declists : {$$ = NULL; }
+    | declist declists { link_decl_lists($1,$2); $$ = $1; }
+
+declist	: VAR declarations SEMC { $$ = $2;}
 
 specifications : {$$ = NULL; }
     | REACH expr specifications {($$ = make_sp($2))->next = $3; }
 
 stmt	: assign
-	| VAR declarations { $$ = make_stmt(Var,NULL,NULL,NULL,NULL,NULL,$2); }
 	| stmt SEMC stmt
-		{ $$ = make_stmt(Semic,NULL,NULL,NULL,$1,$3,NULL); }
+		{ $$ = make_stmt(Semic,NULL,NULL,NULL,$1,$3); }
 	| DO cases OD
-		{ $$ = make_stmt(Do,$2,NULL,NULL,NULL,NULL,NULL); }
-    | IF cases FI {$$ = make_stmt(If,$2,NULL,NULL,NULL,NULL,NULL); } 
-    | SKIP { $$ = make_stmt(Skip,NULL,NULL,NULL,NULL,NULL,NULL); }
-    | BREAK { $$ = make_stmt(Break,NULL,NULL,NULL,NULL,NULL,NULL);}
+		{ $$ = make_stmt(Do,$2,NULL,NULL,NULL,NULL); }
+    | IF cases FI {$$ = make_stmt(If,$2,NULL,NULL,NULL,NULL); } 
+    | SKIP { $$ = make_stmt(Skip,NULL,NULL,NULL,NULL,NULL); }
+    | BREAK { $$ = make_stmt(Break,NULL,NULL,NULL,NULL,NULL);}
 
 declarations : IDENT { $$ = make_decl_list(make_ident($1)); }
     | declarations COMMA IDENT {($$ = make_decl_list((make_ident($3))))->next = $1; } 
@@ -266,7 +286,7 @@ cases : CASE expr THEN stmt {$$ = make_mcase(Expr,$2,$4); }
     | CASE expr THEN stmt cases {($$ = make_mcase(Expr,$2,$4))->next = $5; }        
 
 assign	: IDENT ASSIGN expr 
-		{ $$ = make_stmt(Assign,NULL,make_ident($1),$3,NULL,NULL,NULL); }
+		{ $$ = make_stmt(Assign,NULL,make_ident($1),$3,NULL,NULL); }
 
 expr	: IDENT			{ $$ = make_expr(Ident,0,make_ident($1),NULL,NULL); }
 	| expr XOR expr		{ $$ = make_expr(Xor,0,NULL,$1,$3); }
@@ -388,10 +408,6 @@ int print_stmt(stmt *stmt, int dec) {
 				print_expr(stmt->val.assign.expr);
 			break;
 
-			case Var:
-				print_decl(stmt->val.decl,dec);
-			break;
-
 			case Semic:
 				print_stmt(stmt->val.sub.left,dec);
 				printf(";\n");
@@ -459,6 +475,7 @@ int print_specification(specification *spec) {
 int print_lprocess(lprocess *proc) {
 	if(proc != NULL){
 		printf("proc %s \n",proc->name);
+		print_decl(proc->vars,1);
 		print_stmt(proc->command,1);
 		printf("\nend \n\n");
 		print_lprocess(proc->next);
@@ -466,11 +483,364 @@ int print_lprocess(lprocess *proc) {
 	return 0;
 }
 
+// interpréteur aléatoire
+
+void* link_vars_stmt(stmt* stmt,lprocess* p);
+
+void* link_vars_e(expr* e,lprocess* p)
+{
+	if (e) 
+	{
+		switch (e->type)
+		{
+			case Ident: return e->val.var = find_ident_p(e->val.var->name,p);
+			break;
+			case Xor:
+			case Or:
+			case And:
+			case Not:
+			case Gt:
+			case Eq:
+			case Plus:
+			case Minus:
+			case Times: 
+				link_vars_e(e->val.sub.left,p); link_vars_e(e->val.sub.right,p);break;
+			case Int: break;
+		}
+	}
+}
+
+void* link_vars_mc(mcase* cases,lprocess* p)
+{
+	if (cases)
+	{
+		switch (cases->type)
+		{
+			case Else : link_vars_stmt(cases->command,p);break;
+			case Expr : link_vars_e(cases->cond,p);link_vars_stmt(cases->command,p);break;
+		};
+		link_vars_mc(cases->next,p);
+	}
+}
+
+
+void* link_vars_stmt(stmt* stmt,lprocess* p)
+{
+	switch (stmt->type) 
+	{
+		case Assign : stmt->val.assign.var = find_ident_p(stmt->val.assign.var->name,p);  link_vars_e(stmt->val.assign.expr,p); break;
+		case Semic : link_vars_stmt(stmt->val.sub.left,p);link_vars_stmt(stmt->val.sub.right,p);break;
+		case Do : link_vars_mc(stmt->val.cases,p);break;
+		case If : link_vars_mc(stmt->val.cases,p);break;
+	}
+}
+
+void* link_vars_p (lprocess *p) 
+{
+	if (p) 
+	{
+		link_vars_stmt(p->command,p);
+		link_vars_p(p->next);
+	}
+}
+
+int eval (expr *e)
+{
+	switch (e->type)
+	{
+		case Ident: return e->val.var->val;break;
+		case Int: return e->val.i;break;
+		case Xor: return eval(e->val.sub.left) ^ eval(e->val.sub.right);break;
+		case Or: return eval(e->val.sub.left) || eval(e->val.sub.right);break;
+		case And: return eval(e->val.sub.left) && eval(e->val.sub.right);break;
+		case Not: return !eval(e->val.sub.left);break;
+		case Gt: return eval(e->val.sub.left) > eval(e->val.sub.right);break;
+		case Eq: return eval(e->val.sub.left) == eval(e->val.sub.right);break;
+		case Plus: return eval(e->val.sub.left) + eval(e->val.sub.right);break;
+		case Minus: return eval(e->val.sub.left) - eval(e->val.sub.right);break;
+		case Times: return eval(e->val.sub.left) * eval(e->val.sub.right);break;
+		case Zero: return 0;break;
+	}
+}
+
+void* init_stmt(stmt *stmt)
+{
+	switch (stmt->type) 
+	{
+		case Semic : init_stmt(stmt->val.sub.left); break;
+		case Assign :
+		case Do :
+		case If :
+		case Skip : 
+		case Break : stmt->youre_here = 1; break;
+	}
+}
+
+void* init_process(lprocess *p) 
+{
+	if (p) 
+	{
+		init_stmt(p->command);
+		init_process(p->next);
+	}
+}
+
+int nb_choice(mcase* mc) 
+{
+	if (!mc) {return 0;}
+	else
+	{
+		switch (mc->type)
+		{
+			case Else : return 0; break;
+			case Expr : if (eval(mc->cond)) {return 1 + nb_choice(mc->next);} else {return nb_choice(mc->next);} break;
+		}
+	}
+	
+}
+
+stmt* search_else(mcase *mc)
+{
+	if (mc) 
+	{
+		switch (mc->type)
+		{
+			case Else : return mc->command; break;
+			case Expr : search_else(mc->next); break;
+		}
+	}
+	else { return NULL ;}
+
+}
+
+stmt* choose_nth(mcase *mc, int k)
+{
+	switch (mc->type)
+	{
+		case Else : break;
+		case Expr : if (!k) {return mc->command;} else {choose_nth(mc->next,k-1);} break;
+	}
+}
+
+stmt* choose(mcase *mc) 
+{
+	int n = nb_choice(mc); 
+	if (n) 
+	{
+		int k = rand() % n;
+		return choose_nth(mc,k);
+	}
+	else 
+	{
+		return search_else(mc);
+	}
+}
+
+void* execute_one_stmt(stmt* stmt, lprocess* p);
+int is_finished(stmt* stmt); 
+int is_at_end(stmt* stmt);
+
+int is_finished_mc(mcase* mc) 
+{
+	if (!mc) {return 1;}
+	else
+	{
+		return is_finished(mc->command) && is_finished_mc(mc->next);
+	}
+}
+
+int is_at_end_mc(mcase* mc) 
+{
+	if (!mc) {return 0;}
+	else
+	{
+		return is_at_end(mc->command) || is_at_end_mc(mc->next);
+	}
+}
+
+int is_finished(stmt* stmt) 
+{
+	switch (stmt->type)
+	{
+		case Assign : 
+		case Skip :
+		case Break : return (!stmt->youre_here); break;
+		case Semic : return (is_finished(stmt->val.sub.left)) && (is_finished(stmt->val.sub.right)); break;
+		case Do : 
+		case If : return (is_finished_mc(stmt->val.cases)); break;
+	}
+}
+
+int is_at_end(stmt* stmt)
+{
+	switch (stmt->type)
+	{
+		case Assign : 
+		case Skip :
+		case Break : return (stmt->youre_here); break;
+		case Semic : if (is_finished(stmt->val.sub.left)) 
+					{
+						return is_at_end(stmt->val.sub.right);
+					} break;
+		case Do : 
+		case If : return is_at_end_mc(stmt->val.cases);
+	}
+}
+
+stmt* next_stmt(stmt* stmt)
+{
+	switch (stmt->type)
+	{
+		case Assign : return NULL; break;
+		case Skip : return NULL; break;
+		case Break : return NULL; break;
+		case Semic : if (is_at_end(stmt->val.sub.left)) {return stmt->val.sub.right;}
+					else 
+					{
+						struct stmt* first_try = next_stmt(stmt->val.sub.left);
+						if (first_try) {return first_try;}
+						else {
+							struct stmt* second_try = next_stmt(stmt->val.sub.right);
+							if (second_try) {return second_try;} else {return NULL;}
+						}
+					}
+		case Do : if (stmt->youre_here) {return choose(stmt->val.cases);} 
+				else 
+				{
+					if (is_at_end(stmt)) 
+					{
+						return stmt;
+					}
+					else 
+					{
+						return NULL;
+					}
+				} 
+				break; 
+		case If : if (stmt->youre_here) {return choose(stmt->val.cases);} else {return NULL;} break;
+		
+	}
+}
+
+stmt* next_stmt_p(lprocess* p)
+{
+	next_stmt(p->command);
+}
+
+void* execute_one_stmt(stmt* stmt, lprocess* p);
+
+void* execute_one_case(mcase* mc, lprocess* p)
+{
+	if (mc)
+	{
+		execute_one_stmt(mc->command,p);
+		execute_one_case(mc->next,p);
+	}
+}
+
+void* execute_one_stmt(stmt* stmt, lprocess* p)
+{
+	if (stmt) 
+	{
+		struct stmt* next;
+		switch (stmt->type)
+		{
+			case Assign : 
+				if (stmt->youre_here) 
+				{
+					stmt->val.assign.var->val = eval(stmt->val.assign.expr);
+					next = next_stmt_p(p);
+					if (next) 
+					{
+						stmt->youre_here = 0;
+						next->youre_here = 1;
+					}
+					else 
+					{
+						p->alive = 0;
+					}
+				}
+				break;
+			case Semic :
+				execute_one_stmt(stmt->val.sub.right,p);execute_one_stmt(stmt->val.sub.left,p);
+				break;
+			case Do: 
+				if (stmt->youre_here) 
+				{
+					next = next_stmt_p(p);
+					stmt->youre_here = 0;
+					next->youre_here = 1;
+				}
+				else 
+				{
+					execute_one_case(stmt->val.cases,p);
+				}
+				break;
+			case If:
+				if (stmt->youre_here) 
+				{
+					next = next_stmt_p(p);
+					stmt->youre_here = 0;
+					next->youre_here = 1;
+				}
+				else 
+				{
+					execute_one_case(stmt->val.cases,p);
+				}
+				break;
+			case Skip: 
+				next = next_stmt_p(p);
+				if (next) 
+				{
+					stmt->youre_here = 0;
+					next->youre_here = 1;
+				}
+				else 
+				{
+					p->alive = 0;
+				}
+				break;
+			case Break:
+				next = next_stmt_p(p);
+				if (next) 
+				{
+					stmt->youre_here = 0;
+					next->youre_here = 1;
+				}
+				else 
+				{
+					p->alive = 0;
+				}
+				break;
+		}
+	}
+}
+
+void* execute_one_p(lprocess *p)
+{
+	execute_one_stmt(p->command,p);
+}
+
 int main (int argc, char **argv)
 {
-	yyin = fopen(/*argv[1]*/ "./sort.prog","r");
+	srand(time(NULL));
+	yyin = fopen(/*argv[1]*/ "./test2","r");
 	yyparse();
-	printf("parsing done, now printing \n");
+	printf("parsing done \n");
+	link_vars_p(process_list);
+	printf("%d\n",decl_list->var->val);
+	decl_list->var->name = "a";
+	init_process(process_list);
+	execute_one_p(process_list);
+	printf("%d\n",decl_list->var->val);
+	execute_one_p(process_list);
+	printf("%d\n",decl_list->var->val);
+	execute_one_p(process_list);
+	printf("%d\n",decl_list->var->val);
+	execute_one_p(process_list);
+	printf("%d\n",decl_list->var->val);
+
+	printf("now printing \n");
 	print_decl(decl_list,0);
 	printf("\n");
 	print_lprocess(process_list);

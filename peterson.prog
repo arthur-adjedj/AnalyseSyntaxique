@@ -4,7 +4,7 @@ proc p0
     do
     :: 1 ->     // boucle infinie
 
-	f0 := 1; v := 0;
+	ga := 1; v := 0;
 	do
 	:: v == 1 || !f0  -> break
 	od;
