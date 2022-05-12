@@ -1,8 +1,13 @@
 %option noyywrap
+%option yylineno
 
+%x COMMENT
 DIG	[0-9]
+
+
 %%
 
+"//" { BEGIN(COMMENT); }
 "var"    { return VAR; }
 "proc"    { return PROC; }
 "do"    { return DO; }
@@ -32,8 +37,11 @@ DIG	[0-9]
 "-"    { return MINUS ; }
 "*"    { return TIMES ; }
 
+<COMMENT>. { }
+<COMMENT>\n { BEGIN(INITIAL); }
+
 [a-z][a-z0-9]* { yylval.c = strdup(yytext); return IDENT; }
-"//"[a-zA-Z0-9 ]*"\n" {  }
+"//"[a-zA-Z0-9é ]*"\n" {  }
 [	 \n]    { }
 
 .	{ }

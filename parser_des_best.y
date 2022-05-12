@@ -1,3 +1,5 @@
+%locations
+
 %{
 
 #include <stdio.h>
@@ -10,11 +12,9 @@ enum type_mcase{Else, Expr};
 
 int yylex();
 
-void yyerror(char *s)
-{
-	fflush(stdout);
-	fprintf(stderr, "%s\n", s);
-}
+
+void yyerror(char *s);
+
 
 typedef struct var	// a variable
 {
@@ -47,8 +47,8 @@ typedef struct stmt	// command
 		struct {
 			struct stmt *left, *right;
 		} sub;
-
 	} val;
+	int finished;
 	int youre_here;  // si l'evaluation du processus en est à cette étape
 } stmt;
 
@@ -70,6 +70,7 @@ typedef struct specification // list of specifications
 {
 	expr *expr;
     struct specification *next; 
+	int reached;
 } specification;
 
 typedef struct lprocess	// list of processes
@@ -110,7 +111,7 @@ var* make_ident (char *s)
 {
 	var *v = malloc(sizeof(var));
 	v->name = s;
-	v->val = 0;	// make variable false initially
+	v->val = 0;	// make variable 0 initially
 	return v;
 }
 
@@ -182,6 +183,7 @@ stmt* make_stmt (enum type_stmt type, mcase *mcase, var *var, expr *expr,
 	stmt *s = malloc(sizeof(stmt));
 	s->type = type;
 	s->youre_here = 0;
+	s->finished = 1;
 	switch(type){
 		case Assign:
 			s->val.assign.var = var;
@@ -206,6 +208,7 @@ specification* make_sp (expr *expr)
     specification *sp = malloc(sizeof(specification));
     sp->expr = expr;
     sp->next = NULL;
+	sp->reached = 0;
     return sp;
 }
 
@@ -308,6 +311,12 @@ expr	: IDENT			{ $$ = make_expr(Ident,0,make_ident($1),NULL,NULL); }
 %%
 
 #include "lexer_des_best.c"
+
+void yyerror(char* s)
+{
+	fflush(stdout);
+	fprintf(stderr, "Erreur en ligne %d %s\n",yylineno, s);
+}
 
 int print_var(var *var) {
 	if(var != NULL){
@@ -460,12 +469,12 @@ int print_decl(decl *decl,int dec) {
 	};
 	return 0;
 }
-int print_specification(specification *spec);
 
 int print_specification(specification *spec) {
 	if(spec != NULL){
 		printf("reach ");	
 		print_expr(spec->expr);
+		printf("  a été atteint %d fois", spec->reached);
 		printf("\n");
 		print_specification(spec->next);
 	};
@@ -547,6 +556,15 @@ void* link_vars_p (lprocess *p)
 	}
 }
 
+void* link_vars_sp (specification *s)
+{
+	if (s) 
+	{
+		link_vars_e(s->expr,process_list);
+		link_vars_sp(s->next);
+	}
+}
+
 // renvoie la valeur d'une expression
 
 int eval (expr *e)
@@ -572,14 +590,19 @@ int eval (expr *e)
 
 stmt* first_stmt(stmt *stmt) 
 {
-	switch (stmt->type) 
-	{
-		case Semic : first_stmt(stmt->val.sub.left); break;
-		case Assign :
-		case Do :
-		case If :
-		case Skip : 
-		case Break : return stmt; break;
+	if (stmt) {
+		switch (stmt->type) 
+		{
+			case Semic : first_stmt(stmt->val.sub.left); break;
+			case Assign :
+			case Do :
+			case If :
+			case Skip : 
+			case Break : return stmt; break;
+		}
+	}
+	else {
+		return NULL;
 	}
 }
 
@@ -744,6 +767,44 @@ stmt* next_stmt_mc(mcase* mc)
 	else {return NULL;}
 }
 
+int is_do(stmt* s)
+{
+	switch (s->type)
+	{
+		case Assign : 
+		case Skip :
+		case Break :  
+		case If : return 0;
+		case Semic : return is_do(s->val.sub.right);
+		case Do : return 1;
+	}
+}
+
+int is_finished_do(stmt* stmt)
+{
+	switch (stmt->type)
+	{
+		case Assign : 
+		case Skip :
+		case Break :  
+		case Do :
+		case If : return stmt->finished;
+		case Semic : return is_finished_do(stmt->val.sub.right);
+	}
+}
+
+stmt* last(stmt* s)
+{
+	switch (s->type)
+	{
+		case Assign : 
+		case Skip :
+		case Break :  
+		case Do :
+		case If : return s;
+		case Semic : return last(s->val.sub.right);
+	}
+}
 
 stmt* next_stmt(stmt* stmt)
 {
@@ -752,9 +813,13 @@ stmt* next_stmt(stmt* stmt)
 		case Assign : return NULL; break;
 		case Skip : return NULL; break;
 		case Break : return NULL; break;
-		case Semic : if (is_at_end(stmt->val.sub.left)) {return stmt->val.sub.right;}
+		case Semic : if ((is_at_end(stmt->val.sub.left) && is_finished_do(stmt->val.sub.left) && is_do(stmt->val.sub.left)) || (!is_do(stmt->val.sub.left) && is_at_end(stmt->val.sub.left))) 
+						{ return stmt->val.sub.right;}
 					else 
 					{
+						if (is_at_end(stmt->val.sub.left) && is_do(stmt->val.sub.left)) {
+							return last(stmt->val.sub.left);
+						}
 						struct stmt* first_try = next_stmt(stmt->val.sub.left);
 						if (first_try) {return first_try;}
 						else {
@@ -762,7 +827,7 @@ stmt* next_stmt(stmt* stmt)
 							if (second_try) {return second_try;} else {return NULL;}
 						}
 					}
-		case Do : if (stmt->youre_here) {return choose(stmt->val.cases);} 
+		case Do : if (stmt->youre_here) { return choose(stmt->val.cases);} 
 				else 
 				{
 					if (is_at_end(stmt)) 
@@ -796,6 +861,112 @@ void* execute_one_case(mcase* mc, lprocess* p)
 	}
 }
 
+int has_break_stmt(stmt *s);
+
+int has_break_mc(mcase *mc)
+{
+	if (mc) {
+		return (has_break_stmt(mc->command) + has_break_mc(mc->next));
+	}
+	else {
+		return 0;
+	}
+}
+
+int has_break_stmt(stmt *s)
+{
+	if (s) {
+		switch (s->type){
+			case Assign:
+				return 0;
+			break;
+
+			case Semic:
+				return has_break_stmt(s->val.sub.left) + has_break_stmt(s->val.sub.right);
+			break;	
+
+			case Do:
+				return 0;
+			break;
+
+			case If:
+				return has_break_mc(s->val.cases);
+			break;
+
+			case Skip:
+				return 0;
+			break;
+
+			case Break:
+				if (s->youre_here) {return 1;}
+			break;
+		}	
+	}
+}
+
+stmt* find_do_stmt(stmt *s);
+
+stmt* find_do_mc(mcase *mc)
+{
+	if (mc) {
+		stmt* first_try = find_do_stmt(mc->command);
+		if (first_try) {
+			return first_try;
+		}
+		else {
+			return find_do_mc(mc->next);
+		}
+	}
+	else {
+		return NULL;
+	}
+}
+
+stmt* find_do_stmt(stmt *s)
+{
+	stmt* first_try;
+	if (s) {
+		switch (s->type){
+			case Assign:
+				return NULL;
+			break;
+
+			case Semic:
+				first_try = find_do_stmt(s->val.sub.left);
+				if (!first_try) {
+					stmt* second_try = find_do_stmt(s->val.sub.right);
+					if (!second_try) {return NULL;}
+					else {return second_try;}
+				}
+				else {return first_try;}
+			break;	
+
+			case Do:
+				if (has_break_mc(s->val.cases)) { return s;}
+				else {find_do_mc(s->val.cases);}
+			break;
+
+			case If:
+				return find_do_mc(s->val.cases);
+			break;
+
+			case Skip:
+				return NULL;
+			break;
+
+			case Break:
+				return NULL;
+			break;
+		}	
+	}	
+}
+
+
+stmt* find_do(lprocess *p) 
+{
+	return find_do_stmt(p->command);
+}
+
 // execute une commande dans le processus p
 
 void* execute_one_stmt(stmt* stmt, lprocess* p)
@@ -803,9 +974,10 @@ void* execute_one_stmt(stmt* stmt, lprocess* p)
 	if (stmt) 
 	{
 		struct stmt* next;
+		struct stmt* upper_do;
 		switch (stmt->type)
 		{
-			case Assign : 
+			case Assign :
 				if (stmt->youre_here) 
 				{
 					stmt->val.assign.var->val = eval(stmt->val.assign.expr);
@@ -829,8 +1001,10 @@ void* execute_one_stmt(stmt* stmt, lprocess* p)
 				if (stmt->youre_here) 
 				{
 					next = first_stmt(next_stmt_p(p));
-					stmt->youre_here = 0;
-					next->youre_here = 1;
+					if (next) {
+						stmt->youre_here = 0;
+						next->youre_here = 1;
+					}	
 				}
 				else 
 				{
@@ -852,9 +1026,11 @@ void* execute_one_stmt(stmt* stmt, lprocess* p)
 			case Skip:
 				if (stmt->youre_here)
 				{
+					
 					next = first_stmt(next_stmt_p(p));
 					if (next) 
 					{
+						
 						stmt->youre_here = 0;
 						next->youre_here = 1;
 					}
@@ -866,7 +1042,10 @@ void* execute_one_stmt(stmt* stmt, lprocess* p)
 				break;
 			case Break:
 				if (stmt->youre_here)
-				{
+				{	
+					
+					upper_do = find_do(p);
+					upper_do->finished = 1;
 					next = first_stmt(next_stmt_p(p));
 					if (next) 
 					{
@@ -885,100 +1064,156 @@ void* execute_one_stmt(stmt* stmt, lprocess* p)
 
 void* execute_one_p(lprocess *p)
 {
-	execute_one_stmt(p->command,p);
+	if (p->alive) {
+		execute_one_stmt(p->command,p);
+	}
 }
+
+int number_proc(lprocess *p)
+{
+	if (!p) {
+		return 0;
+	}
+	else {
+		return 1 + (number_proc(p->next));
+	}
+}
+
+void execute_nth(int n,lprocess *p)
+{
+	if (!n) {
+		execute_one_p(p);
+	}
+	else {
+		execute_nth(n-1,p->next);
+	}
+}
+
+void verify_spec(specification* s)
+{
+	if (s) {
+		if (eval(s->expr)) {
+			s->reached++;
+		}
+		verify_spec(s->next);
+	}
+}
+
+void execute_one() 
+{
+	int n = number_proc(process_list);
+	int k = rand() % n;
+	execute_nth(k, process_list);
+	verify_spec(specification_list);
+}
+
+void execute_more(int n)
+{
+	for (int i = 0; i < n; i++) {
+		execute_one();
+	}
+}
+
+void restart_vars(decl *d)
+{
+	if (d) {
+		d->var->val = 0;
+		restart_vars(d->next);
+	}
+}
+
+void restart_vars_p(lprocess *p)
+{
+	if (p) {
+		p->alive = 1;
+		restart_vars(p->vars);
+		restart_vars_p(p->next);
+	}
+}
+
+void restart_youre_here_stmt(stmt *s);
+
+void restart_youre_here_mc(mcase *mc)
+{
+	if (mc) {
+		restart_youre_here_stmt(mc->command);
+		restart_youre_here_mc(mc->next);
+	}
+}
+
+void restart_youre_here_stmt(stmt *s)
+{
+	if (s) {
+		switch (s->type){
+			case Assign:
+				s->youre_here = 0;
+			break;
+
+			case Semic:
+				s->youre_here = 0;
+				restart_youre_here_stmt(s->val.sub.left);
+				restart_youre_here_stmt(s->val.sub.right);
+			break;	
+
+			case Do:
+				s->finished = 0;
+				s->youre_here = 0;
+				restart_youre_here_mc(s->val.cases);
+			break;
+
+			case If:
+				s->youre_here = 0;
+				restart_youre_here_mc(s->val.cases);
+			break;
+
+			case Skip:
+				s->youre_here = 0;
+			break;
+
+			case Break:
+				s->youre_here = 0;
+			break;
+		}	
+	}
+}
+
+void restart_youre_here(lprocess *p) 
+{
+	if (p) {
+		restart_youre_here_stmt(p->command);
+		restart_youre_here(p->next);
+	}
+}
+
+void restart() {
+	restart_youre_here(process_list);
+	restart_vars(decl_list);
+	restart_vars_p(process_list);
+}
+
+void execute_restart(int n, int k)
+{
+	for (int i = 0; i < n; i++)
+	{
+		restart();
+		init_process(process_list);
+		execute_more(k);
+	}
+}
+
+
 
 int main (int argc, char **argv)
 {
 	srand(time(NULL));
-	yyin = fopen(/*argv[1]*/ "./test2","r");
+	yyin = fopen(argv[1],"r");
+
 	yyparse();
 	printf("parsing done \n");
 	link_vars_p(process_list);
-	decl_list->var->name = "a";
-	init_process(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
-	printf("%d\n",decl_list->var->val);
-	execute_one_p(process_list);
+	link_vars_sp(specification_list);
+	execute_restart(1000,1000);
 
-	
-	
-	
 
 	printf("now printing \n");
 	print_decl(decl_list,0);
